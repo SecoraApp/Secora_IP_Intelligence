@@ -1371,7 +1371,7 @@ def lookup_tor_bulk_exit(ip_address):
 
 
 
-ABUSEIPDB_API_KEY = os.environ.get('ABUSEIPDB_API_KEY', 'your-abuseapi-key-change-in-production')
+ABUSEIPDB_API_KEY = os.environ.get('ABUSEIPDB_API_KEY', 'your-abuseapi-key-was-not-found')
 def lookup_abuseipdb(ip_address, max_age_days=90, per_page=5):
     url = "https://api.abuseipdb.com/api/v2/reports"
     headers = {
