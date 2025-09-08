@@ -240,6 +240,5 @@ python app.py
 ## API Integration Notes
 
 - Most APIs work without keys but have stricter limits
-- For production use, consider getting API keys for higher limits
 - Some sources use web scraping (legal but rate-limited)
 - Concurrent execution with 23 workers for fast results 
