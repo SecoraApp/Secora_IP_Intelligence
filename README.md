@@ -1,4 +1,4 @@
-# IP Lookup Tool
+# IP Lookup Tool - WIP
 
 A modern, beautiful Flask web application for looking up IP address information using the ipinfo.io API with curl.
 
