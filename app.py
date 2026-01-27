@@ -17,6 +17,10 @@ import ipaddress
 import threading
 from flask_socketio import SocketIO, emit, join_room
 
+
+from flask_mail import Mail
+from email_verification import EmailVerification
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///ip_lookup.db')
@@ -30,6 +34,28 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 socketio = SocketIO(app)
 
+
+app_pass = os.environ.get('APP_KEY')
+mail = Mail()
+app.config.update(
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME="secoraapp@gmail.com",
+    MAIL_PASSWORD=app_pass,
+    MAIL_DEFAULT_SENDER="Secora <your@gmail.com>"
+)
+mail.init_app(app)
+email_verifier = EmailVerification(mail)
+
+
+
+
+
+
+
+
+
 # Database Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -38,6 +64,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=True)
+    email_confirmed = db.Column(db.Boolean, default=False, nullable=False)
     
     def set_password(self, password):
         """Hash and set password"""
@@ -717,6 +744,15 @@ def lookup_ip(ip_address):
     except Exception as e:
         print(f"Error in lookup_ip: {e}")
         return {'ip': ip_address, 'error': 'Lookup failed'}
+
+
+
+
+
+
+
+
+
 
 @app.route('/')
 def index():
@@ -1487,94 +1523,154 @@ def shortener():
     """URL shortener page"""
     return render_template('shortener.html')
 
+
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """User login"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
+    show_resend = False
+    pending_user = None
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         remember = request.form.get('remember', False)
-        
+
         if not username or not password:
             flash('Please fill in all fields.', 'error')
-            return render_template('auth/login.html')
-        
+            return render_template('auth/login.html', show_resend=False)
+
         user = User.query.filter_by(username=username).first()
-        
+
         if user and user.check_password(password):
+            if not user.email_confirmed:
+                flash("Please confirm your email before logging in.", "error")
+                return render_template('auth/login.html', show_resend=True, pending_user=user)
+
             login_user(user, remember=remember)
-            next_page = request.args.get('next')
-            if not next_page or not next_page.startswith('/'):
-                next_page = url_for('index')
             flash(f'Welcome back, {user.username}!', 'success')
-            return redirect(next_page)
-        else:
-            flash('Invalid username or password.', 'error')
-    
-    return render_template('auth/login.html')
+            return redirect(url_for('index'))
+
+        flash('Invalid username or password.', 'error')
+
+    return render_template('auth/login.html', show_resend=show_resend, pending_user=pending_user)
+
+
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """User registration"""
+
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
-        confirm_email = request.form.get('confirm_email', '').strip()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
-        
+
         # Validation
-        if not all([username, email, confirm_email, password, confirm_password]):
+        if not all([username, email, password, confirm_password]):
             flash('Please fill in all fields.', 'error')
             return render_template('auth/register.html')
-        
-        if email != confirm_email:
-            flash('Emails do not match.', 'error')
-            return render_template('auth/register.html')
-        
+
+
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
             return render_template('auth/register.html')
-        
+
         if len(password) < 6:
             flash('Password must be at least 6 characters long.', 'error')
             return render_template('auth/register.html')
-        
+
         if len(username) < 3:
             flash('Username must be at least 3 characters long.', 'error')
             return render_template('auth/register.html')
-        
+
         # Check if user already exists
         if User.query.filter_by(username=username).first():
             flash('Username already exists.', 'error')
             return render_template('auth/register.html')
-        
+
         if User.query.filter_by(email=email).first():
             flash('Email already registered.', 'error')
             return render_template('auth/register.html')
-        
-        # Create new user
+
+        # Create new user (unconfirmed)
         user = User(username=username, email=email)
         user.set_password(password)
-        
+
         try:
             db.session.add(user)
             db.session.commit()
-            login_user(user)
-            flash(f'Welcome to Secora, {user.username}!', 'success')
-            return redirect(url_for('index'))
-        except Exception as e:
+
+            email_verifier.send_confirmation(user)
+
+            flash("Account has been created! Please check your email to verify.", "success")
+            return redirect(url_for("login"))
+
+        except Exception:
             db.session.rollback()
             flash('Registration failed. Please try again.', 'error')
-    
+
     return render_template('auth/register.html')
+
+
+
+
+@app.route("/confirm/<token>")
+def confirm_email(token):
+    email = email_verifier.confirm_token(token)
+
+    if not email:
+        flash("Confirmation link is invalid or expired.", "error")
+        return redirect(url_for("login"))
+
+    user = User.query.filter_by(email=email).first_or_404()
+
+    if not user.email_confirmed:
+        user.email_confirmed = True
+        db.session.commit()
+        flash("Your email has been confirmed! You can now log in.", "success")
+    else:
+        flash("Your email was already confirmed.", "info")
+
+    return redirect(url_for("login"))
+
+
+
+
+@app.route('/resend-confirmation', methods=['POST'])
+def resend_confirmation():
+    email = request.form.get('email')
+
+    if not email:
+        flash("Invalid request.", "error")
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user or user.email_confirmed:
+        flash("Your email is already confirmed, there is no need to re confirm.", "info")
+        return redirect(url_for('login'))
+
+    if email_verifier.send_confirmation(user):
+        flash("A confirmation email has been resent. If you do not see it, check your spam folder as it may have been sent there instead.", "success")
+    else:
+        flash("Please wait a bit before resending the confirmation email.", "error")
+
+    return redirect(url_for('login'))
+
+
+
+
+
 
 @app.route('/logout')
 @login_required
