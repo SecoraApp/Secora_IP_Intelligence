@@ -16,7 +16,7 @@
         <div class="text-right space-y-1">
             <div class="flex items-center space-x-2 text-sm text-gray-400">
                 <i class="fas fa-clock"></i>
-                <span>Last updated: Jan 20, 2026</span>
+                <span>Last updated: Jan 27, 2026</span>
             </div>
             <div class="flex items-center space-x-2 text-sm text-gray-400">
                 <i class="fas fa-user-secret"></i>
@@ -35,15 +35,15 @@
         </div>
         <div class="text-xl font-bold text-accent-green">Active</div>
     </div>
-    
+
     <div class="status-card p-6 rounded-lg border border-dark-border hover:border-blue-400 transition-all duration-300 transform hover:scale-105">
         <div class="flex justify-between items-center mb-2">
             <span class="text-gray-400">Current Version</span>
             <i class="fas fa-code-branch text-gray-400"></i>
         </div>
-        <div class="text-xl font-bold text-white">v1.3.35</div>
+        <div class="text-xl font-bold text-white">v1.0.02</div>
     </div>
-    
+
     <div class="status-card p-6 rounded-lg border border-dark-border hover:border-blue-400 transition-all duration-300 transform hover:scale-105">
         <div class="flex justify-between items-center mb-2">
             <span class="text-gray-400">IP Lookups</span>
@@ -65,7 +65,7 @@
             <div class="w-3 h-3 bg-accent-yellow rounded-full"></div>
         </div>
     </div>
-    
+
     {% if not current_user.is_authenticated %}
     <!-- Restricted Access for Non-Authenticated Users -->
     <div class="relative group">
@@ -84,19 +84,19 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Interface with hover effect -->
         <div class="transition-all duration-300 group-hover:blur-sm">
     {% endif %}
-    
+
     <div class="flex flex-col sm:flex-row gap-4 mb-8">
         <div class="flex-1 flex gap-2">
-            <input type="text" 
-                   id="ipInput" 
-                   placeholder="Enter IP address (e.g., 8.8.8.8)" 
+            <input type="text"
+                   id="ipInput"
+                   placeholder="Enter IP address (e.g., 8.8.8.8)"
                    class="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                    {% if not current_user.is_authenticated %}disabled{% endif %}>
-            <button onclick="{% if current_user.is_authenticated %}performLookup(){% else %}redirectToLogin(){% endif %}" 
+            <button onclick="{% if current_user.is_authenticated %}performLookup(){% else %}redirectToLogin(){% endif %}"
                     class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-105">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -104,7 +104,7 @@
                 Lookup
             </button>
         </div>
-        <button onclick="{% if current_user.is_authenticated %}testMyIp(){% else %}redirectToLogin(){% endif %}" 
+        <button onclick="{% if current_user.is_authenticated %}testMyIp(){% else %}redirectToLogin(){% endif %}"
                 class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-105">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -143,14 +143,14 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6" id="resultsGrid">
             <!-- Results will be populated here -->
         </div>
-        
+
         <!-- Report IP Button -->
         <div class="mt-6 text-center">
-            <button onclick="showReportModal()" 
+            <button onclick="showReportModal()"
                     class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center gap-2 mx-auto transform hover:scale-105">
                 <i class="fas fa-flag"></i>
                 Report This IP
@@ -168,13 +168,13 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
+
         <form id="reportForm" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">IP Address</label>
                 <input type="text" id="reportIpInput" readonly class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white">
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Report Type</label>
                 <select id="reportType" class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
@@ -187,12 +187,12 @@
                     <option value="other">Other</option>
                 </select>
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Comment</label>
                 <textarea id="reportComment" rows="4" placeholder="Describe what you observed..." class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
             </div>
-            
+
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Security Verification</label>
                 <div class="flex items-center space-x-3">
@@ -203,7 +203,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="flex space-x-3">
                 <button type="submit" class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200">
                     <i class="fas fa-flag mr-2"></i>Submit Report
@@ -222,7 +222,7 @@
         <h3 class="text-lg font-bold text-white">Help</h3>
         <p class="text-gray-400">Resources and guides to OSINT</p>
     </div>
-    
+
     <div class="space-y-4">
         <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
             <div class="flex items-center space-x-4">
@@ -234,7 +234,7 @@
             </div>
             <span class="text-xs bg-accent-blue px-2 py-1 rounded text-white">guide</span>
         </div>
-        
+
         <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
             <div class="flex items-center space-x-4">
                 <i class="fas fa-link text-accent-green"></i>
@@ -286,7 +286,7 @@
         const num2 = Math.floor(Math.random() * 20) + 1;
         const operators = ['+', '-', '*'];
         const operator = operators[Math.floor(Math.random() * operators.length)];
-        
+
         let question, answer;
         switch(operator) {
             case '+':
@@ -302,7 +302,7 @@
                 answer = num1 * num2;
                 break;
         }
-        
+
         document.getElementById('captchaQuestion').textContent = question;
         captchaAnswer = answer;
     }
@@ -413,7 +413,7 @@
 
     function showResults(data) {
         hideLoading();
-        
+
         const resultsGrid = document.getElementById('resultsGrid');
         resultsGrid.innerHTML = '';
 
@@ -512,19 +512,19 @@
         `;
 
         // VPN/Proxy Detection Card
-        const vpnStatus = sanitizedData.vpn_detected ? 'VPN/Proxy Detected' : 
+        const vpnStatus = sanitizedData.vpn_detected ? 'VPN/Proxy Detected' :
                          sanitizedData.is_legitimate_service ? 'Legitimate Service' : 'Clean IP';
-        const vpnColor = sanitizedData.vpn_detected ? 'accent-red' : 
+        const vpnColor = sanitizedData.vpn_detected ? 'accent-red' :
                         sanitizedData.is_legitimate_service ? 'accent-blue' : 'accent-green';
-        const vpnIcon = sanitizedData.vpn_detected ? 'fas fa-shield-alt' : 
+        const vpnIcon = sanitizedData.vpn_detected ? 'fas fa-shield-alt' :
                        sanitizedData.is_legitimate_service ? 'fas fa-building' : 'fas fa-check-circle';
-        
-        const vpnSourcesHtml = sanitizedData.vpn_sources && sanitizedData.vpn_sources.length > 0 ? 
+
+        const vpnSourcesHtml = sanitizedData.vpn_sources && sanitizedData.vpn_sources.length > 0 ?
             sanitizedData.vpn_sources.map(source => `<span class="text-xs bg-red-600 px-2 py-1 rounded">${source}</span>`).join('') : '';
-        
-        const torSourcesHtml = sanitizedData.tor_sources && sanitizedData.tor_sources.length > 0 ? 
+
+        const torSourcesHtml = sanitizedData.tor_sources && sanitizedData.tor_sources.length > 0 ?
             sanitizedData.tor_sources.map(source => `<span class="text-xs bg-purple-600 px-2 py-1 rounded">${source}</span>`).join('') : '';
-        
+
         // VPN Provider Information
         let vpnProviderHtml = '';
         if (sanitizedData.likely_vpn_provider) {
@@ -535,7 +535,7 @@
                 </div>
             `;
         }
-        
+
         // Additional VPN providers
         let additionalProvidersHtml = '';
         if (sanitizedData.vpn_providers && sanitizedData.vpn_providers.length > 1) {
@@ -544,14 +544,14 @@
                 <div class="mt-3 pt-3 border-t border-gray-600">
                     <span class="text-gray-400 text-sm">Other possible providers:</span>
                     <div class="flex flex-wrap gap-1 mt-1">
-                        ${additionalProviders.map(provider => 
+                        ${additionalProviders.map(provider =>
                             `<span class="text-xs bg-orange-600 px-2 py-1 rounded" title="Confidence: ${provider.confidence}">${provider.name}</span>`
                         ).join('')}
                     </div>
                 </div>
             `;
         }
-        
+
         // AbuseIPDB Section
         let abuseipdbHtml = '';
         if (sanitizedData.abuseipdb_total_reports !== undefined && sanitizedData.abuseipdb_total_reports > 0) {
@@ -596,7 +596,7 @@
                     '</div>' +
                 '</div>';
         }
-        
+
         const securityCard = `
             <div class="intel-card p-6 rounded-lg border border-dark-border hover:border-red-400 transition-all duration-300 transform hover:scale-102">
                 <div class="flex justify-between items-center mb-4">
@@ -715,7 +715,7 @@
     async function testMyIp() {
         try {
             showLoading();
-            
+
             // First, get the user's IP
             const ipResponse = await fetch('/my-ip', {
                 method: 'GET',
@@ -723,25 +723,25 @@
                     'Accept': 'application/json'
                 }
             });
-            
+
             const ipData = await ipResponse.json();
-            
+
             if (!ipData.success) {
                 hideLoading();
                 showAlert(sanitizeHTML(ipData.error || 'Could not determine your IP address'));
                 return;
             }
-            
+
             // Validate the received IP
             if (!validateIP(ipData.ip)) {
                 hideLoading();
                 showAlert('Received invalid IP address from server');
                 return;
             }
-            
+
             // Set the IP in the input field
             document.getElementById('ipInput').value = sanitizeHTML(ipData.ip);
-            
+
             // Now perform the lookup
             const response = await fetch('/lookup', {
                 method: 'POST',
@@ -769,7 +769,7 @@
     async function performLookup() {
         const ipInput = document.getElementById('ipInput');
         const ip = ipInput.value.trim();
-        
+
         if (!ip) {
             showAlert('Please enter an IP address');
             return;
@@ -814,7 +814,7 @@
         if (ipInput && !ipInput.disabled) {
             ipInput.focus();
         }
-        
+
         if (ipInput) {
             ipInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
@@ -837,4 +837,4 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}
