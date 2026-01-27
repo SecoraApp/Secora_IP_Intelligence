@@ -1535,6 +1535,14 @@ def login():
     show_resend = False
     pending_user = None
 
+    # Check if coming from registration with username
+    username_param = request.args.get('username')
+    if username_param:
+        user = User.query.filter_by(username=username_param).first()
+        if user and not user.email_confirmed:
+            show_resend = True
+            pending_user = user
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
@@ -1542,20 +1550,31 @@ def login():
 
         if not username or not password:
             flash('Please fill in all fields.', 'error')
-            return render_template('auth/login.html', show_resend=False)
+            return render_template('auth/login.html', show_resend=show_resend, pending_user=pending_user)
 
         user = User.query.filter_by(username=username).first()
 
-        if user and user.check_password(password):
+        if user:
             if not user.email_confirmed:
                 flash("Please confirm your email before logging in.", "error")
-                return render_template('auth/login.html', show_resend=True, pending_user=user)
+                show_resend = True
+                pending_user = user
+                return render_template('auth/login.html', show_resend=show_resend, pending_user=pending_user)
 
-            login_user(user, remember=remember)
-            flash(f'Welcome back, {user.username}!', 'success')
-            return redirect(url_for('index'))
+            # Confirmed user, check password
+            if user.check_password(password):
+                login_user(user, remember=remember)
+                flash(f'Welcome back, {user.username}!', 'success')
+                next_page = request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('index')
+                return redirect(next_page)
 
         flash('Invalid username or password.', 'error')
+        # Preserve user data if login failed but the user still exists
+        if user and not user.email_confirmed:
+            show_resend = True
+            pending_user = user
 
     return render_template('auth/login.html', show_resend=show_resend, pending_user=pending_user)
 
@@ -1579,7 +1598,6 @@ def register():
         if not all([username, email, password, confirm_password]):
             flash('Please fill in all fields.', 'error')
             return render_template('auth/register.html')
-
 
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
@@ -1613,11 +1631,12 @@ def register():
             email_verifier.send_confirmation(user)
 
             flash("Account has been created! Please check your email to verify.", "success")
-            return render_template('auth/register.html')
+            # Pass username to show resend button immediately
+            return redirect(url_for("login", username=username))
 
-        except Exception:
+        except Exception as e:
             db.session.rollback()
-            flash('Registration failed. Please try again.', 'error')
+            flash('Registration failed. Please try again or contact support.', 'error')
 
     return render_template('auth/register.html')
 
