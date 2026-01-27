@@ -68,7 +68,7 @@
 
         {% if show_resend and pending_user %}
         <form method="POST" action="{{ url_for('resend_confirmation') }}" class="mt-4 text-center">
-            <input type="hidden" name="email" value="{{ pending_user.email }}">
+            <input type="hidden" name="user_id" value="{{ pending_user.id }}">
             <button
                 type="submit"
                 class="text-sm text-blue-400 hover:text-blue-300 underline">
@@ -88,3 +88,4 @@
     </div>
 </div>
 {% endblock %}
+
