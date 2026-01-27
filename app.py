@@ -1613,7 +1613,7 @@ def register():
             email_verifier.send_confirmation(user)
 
             flash("Account has been created! Please check your email to verify.", "success")
-            return redirect(url_for("login"))
+            return render_template('auth/register.html')
 
         except Exception:
             db.session.rollback()
