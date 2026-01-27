@@ -65,11 +65,11 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=True)
     email_confirmed = db.Column(db.Boolean, default=False, nullable=False)
-    
+
     def set_password(self, password):
         """Hash and set password"""
         self.password_hash = PasswordHasher().hash(password)
-    
+
 
     def check_password(self, password):
         """Check if provided password matches hash"""
@@ -80,9 +80,13 @@ class User(UserMixin, db.Model):
             return False
         except Exception:
             return False
-    
+
     def __repr__(self):
         return f'<User {self.username}>'
+
+
+
+
 
 class SearchHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -91,7 +95,7 @@ class SearchHistory(db.Model):
     search_type = db.Column(db.String(20), default='ip_lookup')  # 'ip_lookup' or 'url_shorten'
     url_shortened = db.Column(db.Text, nullable=True)  # For URL shortening history
     timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    
+
     user = db.relationship('User', backref=db.backref('searches', lazy=True))
 
 class IPReport(db.Model):
@@ -101,7 +105,7 @@ class IPReport(db.Model):
     report_type = db.Column(db.String(50), nullable=False)  # 'malicious', 'spam', 'suspicious', etc.
     comment = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    
+
     user = db.relationship('User', backref=db.backref('reports', lazy=True))
 
 @login_manager.user_loader
@@ -124,19 +128,19 @@ def rate_limit(max_requests=10, window_seconds=60):
             # Get client IP
             client_ip = get_client_ip()
             current_time = time.time()
-            
+
             # Clean old requests
             requests_for_ip = rate_limit_storage[client_ip]
             while requests_for_ip and current_time - requests_for_ip[0] > window_seconds:
                 requests_for_ip.popleft()
-            
+
             # Check rate limit
             if len(requests_for_ip) >= max_requests:
                 return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-            
+
             # Add current request
             requests_for_ip.append(current_time)
-            
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -150,7 +154,7 @@ def get_client_ip():
         first_ip = forwarded_ips.split(',')[0].strip()
         if is_valid_ip(first_ip):
             return first_ip
-    
+
     # Fallback to remote addr
     remote_addr = request.environ.get('REMOTE_ADDR', '127.0.0.1')
     return remote_addr if is_valid_ip(remote_addr) else '127.0.0.1'
@@ -167,64 +171,64 @@ def after_request(response):
         "img-src 'self' data:; "
         "connect-src 'self';"
     )
-    
+
     # Other security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    
+
     # Remove server information
     response.headers.pop('Server', None)
-    
+
     return response
 
 def sanitize_string(value, max_length=500):
     """Sanitize and validate string input"""
     if not isinstance(value, str):
         return ''
-    
+
     # HTML escape and truncate
     sanitized = html.escape(value.strip())[:max_length]
-    
+
     # Remove any potentially dangerous characters
     sanitized = re.sub(r'[<>"\']', '', sanitized)
-    
+
     return sanitized
 
 def is_valid_ip(ip):
     """Validate IP address format with additional security checks"""
     if not ip or not isinstance(ip, str):
         return False
-    
+
     # Basic length check
     if len(ip) > 15 or len(ip) < 7:
         return False
-    
+
     # Check for valid IPv4 format
     ip_pattern = re.compile(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
     if not ip_pattern.match(ip):
         return False
-    
+
     # Block private/reserved IP ranges for external lookups
     parts = ip.split('.')
     if len(parts) != 4:
         return False
-    
+
     try:
         octets = [int(part) for part in parts]
     except ValueError:
         return False
-    
+
     # Check for private/reserved ranges
-    if (octets[0] == 10 or 
+    if (octets[0] == 10 or
         (octets[0] == 172 and 16 <= octets[1] <= 31) or
         (octets[0] == 192 and octets[1] == 168) or
         octets[0] == 127 or  # localhost
         octets[0] == 0 or    # invalid
         octets[0] >= 224):   # multicast/reserved
         return False
-    
+
     return True
 
 def lookup_ipinfo(ip_address):
@@ -333,7 +337,7 @@ def lookup_vpnapi(ip_address):
             security = data.get('security', {})
             location = data.get('location', {})
             network = data.get('network', {})
-            
+
             return {
                 'ip': ip_address,
                 'city': location.get('city'),
@@ -369,7 +373,7 @@ def lookup_ipqualityscore(ip_address):
 def get_vpn_provider_info(ip_address):
     """Get VPN provider information from multiple sources"""
     vpn_providers = []
-    
+
     # Source 1: VPN IP Database (free API)
     try:
         response = requests.get(f'https://vpnapi.io/api/{ip_address}', timeout=5)
@@ -384,7 +388,7 @@ def get_vpn_provider_info(ip_address):
                 })
     except Exception:
         pass
-    
+
     # Source 2: IPHub (free tier)
     try:
         response = requests.get(f'http://v2.api.iphub.info/guest/ip/{ip_address}', timeout=5)
@@ -436,7 +440,7 @@ def get_vpn_provider_info(ip_address):
                         })
     except Exception:
         pass
-    
+
     # Source 3: Manual VPN provider detection based on organization names
     try:
         # Get basic IP info to check organization
@@ -444,7 +448,7 @@ def get_vpn_provider_info(ip_address):
         if ipinfo_response.status_code == 200:
             ipinfo_data = ipinfo_response.json()
             org = ipinfo_data.get('org', '').lower()
-            
+
             # Common VPN provider patterns
             vpn_patterns = {
                 'nordvpn': 'NordVPN',
@@ -501,7 +505,7 @@ def get_vpn_provider_info(ip_address):
                 'vpntunnel': 'VPNTunnel',
                 'vpnunlimited': 'VPNUnlimited'
             }
-            
+
             for pattern, provider in vpn_patterns.items():
                 if pattern in org:
                     vpn_providers.append({
@@ -512,7 +516,7 @@ def get_vpn_provider_info(ip_address):
                     break
     except Exception:
         pass
-    
+
     return vpn_providers
 
 def check_vpn_proxy(ip_address):
@@ -524,7 +528,7 @@ def check_vpn_proxy(ip_address):
     tor_sources = []
     detection_count = 0
     sources_used = 0
-    
+
     # Run multiple VPN/Proxy detection methods concurrently
     detection_methods = [
         lookup_proxycheck,
@@ -538,16 +542,16 @@ def check_vpn_proxy(ip_address):
         lookup_ipstack,
         lookup_freeipapi
     ]
-    
+
     # Run detection methods concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(method, ip_address): method.__name__ for method in detection_methods}
-        
+
         for future in concurrent.futures.as_completed(futures, timeout=15):
             try:
                 result = future.result()
                 sources_used += 1
-                
+
                 if result:
                     if result.get('vpn_detected') or result.get('is_vpn'):
                         vpn_detected = True
@@ -555,23 +559,23 @@ def check_vpn_proxy(ip_address):
                         source_name = futures[future]
                         if source_name not in vpn_sources:
                             vpn_sources.append(source_name)
-                    
+
                     if result.get('proxy_detected') or result.get('is_proxy'):
                         proxy_detected = True
                         detection_count += 1
                         source_name = futures[future]
                         if source_name not in vpn_sources:
                             vpn_sources.append(source_name)
-                    
+
                     if result.get('tor_detected') or result.get('is_tor'):
                         tor_detected = True
                         source_name = futures[future]
                         if source_name not in tor_sources:
                             tor_sources.append(source_name)
-                            
+
             except Exception:
                 continue
-    
+
     # Check for Tor exit nodes
     tor_methods = [
         lookup_tor_exit_nodes,
@@ -586,24 +590,24 @@ def check_vpn_proxy(ip_address):
         lookup_tor_eff,
         lookup_tor_bulk_exit
     ]
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = {executor.submit(method, ip_address): method.__name__ for method in tor_methods}
-        
+
         for future in concurrent.futures.as_completed(futures, timeout=15):
             try:
                 result = future.result()
                 sources_used += 1
-                
+
                 if result and (result.get('tor_detected') or result.get('is_tor')):
                     tor_detected = True
                     source_name = futures[future]
                     if source_name not in tor_sources:
                         tor_sources.append(source_name)
-                        
+
             except Exception:
                 continue
-    
+
     # Check if it's a known legitimate service
     org_info = ""
     try:
@@ -613,9 +617,9 @@ def check_vpn_proxy(ip_address):
             org_info = ipinfo_data.get('org', '')
     except Exception:
         pass
-    
+
     is_legitimate = is_known_legitimate_service(ip_address, org_info)
-    
+
     # Determine confidence level
     if tor_detected:
         detection_confidence = 'High' if len(tor_sources) > 1 else 'Medium'
@@ -628,7 +632,7 @@ def check_vpn_proxy(ip_address):
             detection_confidence = 'Low'
     else:
         detection_confidence = 'Clean'
-    
+
     return {
         'vpn_detected': vpn_detected,
         'proxy_detected': proxy_detected,
@@ -646,30 +650,30 @@ def is_known_legitimate_service(ip_address, org_info):
     """Check if IP belongs to known legitimate services to reduce false positives"""
     legitimate_indicators = [
         # Major CDNs and cloud providers
-        'cloudflare', 'amazon', 'google', 'microsoft', 'akamai', 
+        'cloudflare', 'amazon', 'google', 'microsoft', 'akamai',
         'fastly', 'cdn', 'aws', 'azure', 'gcp', 'facebook',
         # Major ISPs
         'comcast', 'verizon', 'at&t', 'charter', 'cox',
         # Public DNS providers
         'quad9', 'opendns', 'level3'
     ]
-    
+
     # Check common legitimate IP ranges
     legitimate_ips = [
         '1.1.1.1', '1.0.0.1',  # Cloudflare DNS
         '8.8.8.8', '8.8.4.4',  # Google DNS
         '9.9.9.9', '149.112.112.112',  # Quad9 DNS
     ]
-    
+
     if ip_address in legitimate_ips:
         return True
-    
+
     if org_info:
         org_lower = str(org_info).lower()
         for indicator in legitimate_indicators:
             if indicator in org_lower:
                 return True
-    
+
     return False
 
 def lookup_ip(ip_address):
@@ -678,7 +682,7 @@ def lookup_ip(ip_address):
         # Get basic IP information
         ipinfo_data = lookup_ipinfo(ip_address)
         ipapi_data = lookup_ipapi(ip_address)
-        
+
         # Use the best available data
         if ipinfo_data:
             result = {
@@ -706,12 +710,12 @@ def lookup_ip(ip_address):
             }
         else:
             result = {'ip': ip_address}
-        
+
         # Check VPN/Proxy status
         vpn_proxy_result = check_vpn_proxy(ip_address)
         if vpn_proxy_result and isinstance(vpn_proxy_result, dict):
             result.update(vpn_proxy_result)
-        
+
         # Get VPN provider information
         vpn_providers = get_vpn_provider_info(ip_address)
         if vpn_providers:
@@ -722,7 +726,7 @@ def lookup_ip(ip_address):
                 result['likely_vpn_provider'] = high_confidence[0]['name']
             else:
                 result['likely_vpn_provider'] = vpn_providers[0]['name']
-        
+
         # AbuseIPDB integration
         abuseipdb_data = lookup_abuseipdb(ip_address)
         result.update(abuseipdb_data)
@@ -730,7 +734,7 @@ def lookup_ip(ip_address):
         abuseipdb_conf = lookup_abuseipdb_confidence(ip_address)
         if abuseipdb_conf is not None:
             result['abuseipdb_confidence_score'] = abuseipdb_conf
-        
+
         # Apple/NordVPN detection
         try:
             provider = check_apple_nordvpn(ip_address)
@@ -738,9 +742,9 @@ def lookup_ip(ip_address):
                 result['likely_vpn_provider'] = provider
         except Exception:
             pass
-        
+
         return result
-        
+
     except Exception as e:
         print(f"Error in lookup_ip: {e}")
         return {'ip': ip_address, 'error': 'Lookup failed'}
@@ -775,7 +779,7 @@ def get_my_ip():
     try:
         # First try to get from request headers (for deployed apps)
         client_ip = get_client_ip()
-        
+
         # If it's a private/localhost IP, use external service
         if client_ip in ['127.0.0.1', 'localhost'] or not is_valid_ip(client_ip):
             # Use external service to get real public IP
@@ -784,7 +788,7 @@ def get_my_ip():
                 'https://httpbin.org/ip',
                 'https://ipinfo.io/json'
             ]
-            
+
             for service in ip_services:
                 try:
                     headers = {
@@ -792,17 +796,17 @@ def get_my_ip():
                         'Accept': 'application/json'
                     }
                     response = requests.get(service, timeout=5, headers=headers, verify=True)
-                    
+
                     if response.status_code == 200:
                         data = response.json()
-                        
+
                         # Different services return IP in different formats
                         user_ip = None
                         if 'ip' in data:
                             user_ip = sanitize_string(str(data['ip']))
                         elif 'origin' in data:  # httpbin format
                             user_ip = sanitize_string(str(data['origin']))
-                        
+
                         # Validate the IP
                         if user_ip and is_valid_ip(user_ip):
                             return jsonify({
@@ -810,10 +814,10 @@ def get_my_ip():
                                 'ip': user_ip,
                                 'service': sanitize_string(service)
                             })
-                            
+
                 except (requests.RequestException, json.JSONDecodeError, KeyError):
                     continue
-            
+
             # If all external services fail, return error
             return jsonify({'error': 'Could not determine your public IP address'}), 400
         else:
@@ -822,7 +826,7 @@ def get_my_ip():
                 'success': True,
                 'ip': client_ip
             })
-        
+
     except Exception as e:
         app.logger.error(f"Error getting client IP: {str(e)}")
         return jsonify({'error': 'Could not determine your IP address'}), 500
@@ -835,27 +839,27 @@ def lookup():
         # Validate content type
         if not request.is_json:
             return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'Invalid JSON data'}), 400
-        
+
         # Validate and sanitize input
         ip_address = data.get('ip_address', '')
         if not isinstance(ip_address, str):
             return jsonify({'error': 'IP address must be a string'}), 400
-        
+
         ip_address = sanitize_string(ip_address.strip())
-        
+
         if not ip_address:
             return jsonify({'error': 'Please enter an IP address'}), 400
-        
+
         if not is_valid_ip(ip_address):
             return jsonify({'error': 'Please enter a valid public IP address'}), 400
-        
+
         # Perform the lookup
         result = lookup_ip(ip_address)
-        
+
         # Log activity if user is authenticated
         if current_user.is_authenticated:
             try:
@@ -883,9 +887,9 @@ def lookup():
             except Exception as log_error:
                 app.logger.error(f"Failed to log search: {log_error}")
                 db.session.rollback()
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         # Log the error (in production, use proper logging)
         app.logger.error(f"Lookup error: {str(e)}")
@@ -900,45 +904,45 @@ def report_ip():
         # Validate content type
         if not request.is_json:
             return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'Invalid JSON data'}), 400
-        
+
         # Validate and sanitize input
         ip_address = data.get('ip_address', '')
         report_type = data.get('report_type', '')
         comment = data.get('comment', '')
-        
+
         if not isinstance(ip_address, str) or not isinstance(report_type, str) or not isinstance(comment, str):
             return jsonify({'error': 'All fields must be strings'}), 400
-        
+
         ip_address = sanitize_string(ip_address.strip())
         report_type = sanitize_string(report_type.strip())
         comment = sanitize_string(comment.strip(), max_length=1000)
-        
+
         if not ip_address:
             return jsonify({'error': 'Please enter an IP address'}), 400
-        
+
         if not is_valid_ip(ip_address):
             return jsonify({'error': 'Please enter a valid public IP address'}), 400
-        
+
         if not report_type:
             return jsonify({'error': 'Please select a report type'}), 400
-        
+
         if not comment:
             return jsonify({'error': 'Please provide a comment'}), 400
-        
+
         # Check if user already reported this IP recently (within 24 hours)
         yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
         existing_report = IPReport.query.filter_by(
             user_id=current_user.id,
             ip_address=ip_address
         ).filter(IPReport.timestamp > yesterday).first()
-        
+
         if existing_report:
             return jsonify({'error': 'You have already reported this IP address recently'}), 400
-        
+
         # Create the report
         report = IPReport(
             user_id=current_user.id,
@@ -946,15 +950,15 @@ def report_ip():
             report_type=report_type,
             comment=comment
         )
-        
+
         db.session.add(report)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'IP address reported successfully'
         })
-        
+
     except Exception as e:
         app.logger.error(f"Report error: {str(e)}")
         db.session.rollback()
@@ -966,12 +970,12 @@ def get_ip_reports(ip_address):
     try:
         if not is_valid_ip(ip_address):
             return jsonify({'error': 'Invalid IP address'}), 400
-        
+
         # Get all reports for this IP (limit to recent ones for performance)
         reports = IPReport.query.filter_by(ip_address=ip_address)\
                                .order_by(IPReport.timestamp.desc())\
                                .limit(10).all()
-        
+
         reports_data = []
         for report in reports:
             reports_data.append({
@@ -981,13 +985,13 @@ def get_ip_reports(ip_address):
                 'timestamp': report.timestamp.isoformat(),
                 'username': report.user.username
             })
-        
+
         return jsonify({
             'success': True,
             'reports': reports_data,
             'total_reports': len(reports_data)
         })
-        
+
     except Exception as e:
         app.logger.error(f"Get reports error: {str(e)}")
         return jsonify({'error': 'An internal error occurred'}), 500
@@ -1380,7 +1384,7 @@ def lookup_tor_bulk_exit(ip_address):
             'https://torstatus.rueckgr.at/ip_list_exit.php/Tor_ip_list_EXIT.csv',
             'https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=1.1.1.1'
         ]
-        
+
         for url in exit_lists:
             try:
                 response = requests.get(url, timeout=8)
@@ -1466,7 +1470,7 @@ def lookup_cleantalk(ip_address):
         if response.status_code == 200:
             content = response.text.lower()
             # Check for blacklist indicators
-            is_blacklisted = any(keyword in content for keyword in 
+            is_blacklisted = any(keyword in content for keyword in
                                ['blacklisted', 'spam', 'abuse', 'proxy', 'vpn'])
             return {
                 'ip': ip_address,
@@ -1484,9 +1488,9 @@ def lookup_virustotal_community(ip_address):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(f'https://www.virustotal.com/vtapi/v2/ip-address/report?apikey=public&ip={ip_address}', 
+        response = requests.get(f'https://www.virustotal.com/vtapi/v2/ip-address/report?apikey=public&ip={ip_address}',
                               headers=headers, timeout=5)
-        
+
         # For free access, we'll do basic detection
         if response.status_code == 200:
             try:
@@ -1494,10 +1498,10 @@ def lookup_virustotal_community(ip_address):
                 # Look for malicious detections
                 detected_urls = data.get('detected_urls', [])
                 detected_samples = data.get('detected_samples', [])
-                
+
                 # High activity might indicate compromised/VPN IP
                 is_suspicious = len(detected_urls) > 5 or len(detected_samples) > 2
-                
+
                 return {
                     'ip': ip_address,
                     'vpn_detected': is_suspicious,
@@ -1655,6 +1659,7 @@ def confirm_email(token):
 
     if not user.email_confirmed:
         user.email_confirmed = True
+        user.is_active = True
         db.session.commit()
         flash("Your email has been confirmed! You can now log in.", "success")
     else:
@@ -1714,12 +1719,12 @@ def history():
     """User activity history page"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    
+
     # Get all searches for the current user with pagination
     searches = SearchHistory.query.filter_by(user_id=current_user.id)\
                                  .order_by(SearchHistory.timestamp.desc())\
                                  .paginate(page=page, per_page=per_page, error_out=False)
-    
+
     return render_template('auth/history.html', searches=searches)
 
 @app.route('/history/delete/<int:history_id>', methods=['POST'])
@@ -1729,43 +1734,43 @@ def delete_history(history_id):
     try:
         # Find the history entry
         history_entry = SearchHistory.query.filter_by(
-            id=history_id, 
+            id=history_id,
             user_id=current_user.id
         ).first()
-        
+
         if not history_entry:
             return jsonify({'error': 'History entry not found'}), 404
-        
+
         # Delete the entry
         db.session.delete(history_entry)
         db.session.commit()
-        
+
         return jsonify({'success': True, 'message': 'History entry deleted'})
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to delete history entry'}), 500
 
 @app.route('/history/load_more')
-@login_required  
+@login_required
 def load_more_history():
     """Load more history entries via AJAX"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = 20
-        
+
         # Get searches for current page
         searches = SearchHistory.query.filter_by(user_id=current_user.id)\
                                      .order_by(SearchHistory.timestamp.desc())\
                                      .paginate(page=page, per_page=per_page, error_out=False)
-        
+
         # Render just the table rows
         history_html = ""
         for search in searches.items:
             activity_type = "IP Lookup" if search.search_type == 'ip_lookup' else "URL Shortening"
             activity_data = search.ip_address if search.search_type == 'ip_lookup' else search.url_shortened
             activity_icon = "fas fa-search" if search.search_type == 'ip_lookup' else "fas fa-link"
-            
+
             history_html += f'''
             <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors duration-200" data-history-id="{search.id}">
                 <td class="px-4 py-3">
@@ -1781,21 +1786,21 @@ def load_more_history():
                     <span class="text-gray-400 text-sm">{search.timestamp.strftime('%m/%d/%Y %I:%M %p')}</span>
                 </td>
                 <td class="px-4 py-3 text-center">
-                    <button onclick="deleteHistory({search.id})" 
-                            class="text-red-400 hover:text-red-300 transition-colors duration-200 p-1" 
+                    <button onclick="deleteHistory({search.id})"
+                            class="text-red-400 hover:text-red-300 transition-colors duration-200 p-1"
                             title="Delete this entry">
                         <i class="fas fa-trash text-sm"></i>
                     </button>
                 </td>
             </tr>
             '''
-        
+
         return jsonify({
             'html': history_html,
             'has_next': searches.has_next,
             'next_page': searches.next_num if searches.has_next else None
         })
-        
+
     except Exception as e:
         return jsonify({'error': 'Failed to load more history'}), 500
 
@@ -1807,28 +1812,28 @@ def shorten_url():
         # Validate content type
         if not request.is_json:
             return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'Invalid JSON data'}), 400
-        
+
         # Validate and sanitize input
         url = data.get('url', '')
         if not isinstance(url, str):
             return jsonify({'error': 'URL must be a string'}), 400
-        
+
         url = sanitize_string(url.strip())
-        
+
         if not url:
             return jsonify({'error': 'Please enter a URL'}), 400
-        
+
         # Validate URL format
         if not is_valid_url(url):
             return jsonify({'error': 'Please enter a valid URL'}), 400
-        
+
         # Perform the shortening
         result = shorten_with_multiple_services(url)
-        
+
         # Log activity if user is authenticated
         if current_user.is_authenticated:
             try:
@@ -1844,9 +1849,9 @@ def shorten_url():
                 # Don't fail the request if logging fails
                 app.logger.error(f"Failed to log URL shortening: {log_error}")
                 db.session.rollback()
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         # Log the error (in production, use proper logging)
         app.logger.error(f"Shortening error: {str(e)}")
@@ -1874,13 +1879,13 @@ def shorten_with_multiple_services(url):
         # Demo only
         shorten_with_tiny_cc
     ]
-    
+
     results = []
-    
+
     # Run all shortening services concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
         futures = {executor.submit(service, url): service.__name__ for service in services}
-        
+
         for future in concurrent.futures.as_completed(futures, timeout=15):
             try:
                 result = future.result()
@@ -1894,7 +1899,7 @@ def shorten_with_multiple_services(url):
                     'success': False,
                     'error': str(e)
                 })
-    
+
     return {
         'original_url': url,
         'results': results,
@@ -1909,7 +1914,7 @@ def shorten_with_ulvis(url):
         response = requests.post('https://ulvis.net/api.php',
                                data={'url': url},
                                timeout=10)
-        
+
         if response.status_code == 200:
             result = response.text.strip()
             if result.startswith('https://ulvis.net/') and 'error' not in result.lower():
@@ -1918,7 +1923,7 @@ def shorten_with_ulvis(url):
                     'success': True,
                     'short_url': result
                 }
-        
+
         return {
             'service': 'ulvis.net',
             'success': False,
@@ -1938,7 +1943,7 @@ def shorten_with_cleanuri(url):
         response = requests.post('https://cleanuri.com/api/v1/shorten',
                                data={'url': url},
                                timeout=10)
-        
+
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -1950,7 +1955,7 @@ def shorten_with_cleanuri(url):
                     }
             except:
                 pass
-        
+
         return {
             'service': 'cleanuri.com',
             'success': False,
@@ -1973,12 +1978,12 @@ def shorten_with_shrtfr(url):
             'Referer': 'https://shrt.fr/',
             'Origin': 'https://shrt.fr'
         }
-        
+
         response = requests.post('https://shrt.fr/',
                                data={'url': url},
                                headers=headers,
                                timeout=10)
-        
+
         if response.status_code == 200:
             # Look for the shortened URL in the response
             content = response.text
@@ -1991,7 +1996,7 @@ def shorten_with_shrtfr(url):
                         'success': True,
                         'short_url': match.group()
                     }
-        
+
         return {
             'service': 'shrt.fr',
             'success': False,
@@ -2098,7 +2103,7 @@ def shorten_with_cutt_ly(url):
     try:
         # cutt.ly has a free API that doesn't require registration for basic use
         response = requests.get(f'https://cutt.ly/api/api.php?key=free&short={url}', timeout=10)
-        
+
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -2110,7 +2115,7 @@ def shorten_with_cutt_ly(url):
                     }
             except:
                 pass
-        
+
         return {
             'service': 'cutt.ly',
             'success': False,
@@ -2130,7 +2135,7 @@ def shorten_with_tiny_cc(url):
         import hashlib
         url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
         tiny_short = f"https://tiny.cc/{url_hash}"
-        
+
         return {
             'service': 'tiny.cc',
             'success': True,
@@ -2152,7 +2157,7 @@ def shorten_with_gotiny(url):
                                json={'input': url},
                                headers={'Content-Type': 'application/json'},
                                timeout=10)
-        
+
         if response.status_code == 200:
             try:
                 data = response.json()
@@ -2164,7 +2169,7 @@ def shorten_with_gotiny(url):
                     }
             except:
                 pass
-        
+
         return {
             'service': 'gotiny.cc',
             'success': False,
@@ -2186,12 +2191,12 @@ def shorten_with_gg_gg(url):
             'Content-Type': 'application/x-www-form-urlencoded',
             'Referer': 'https://gg.gg/'
         }
-        
+
         response = requests.post('https://gg.gg/create',
                                data={'custom_ending': '', 'long_url': url},
                                headers=headers,
                                timeout=10)
-        
+
         if response.status_code == 200:
             # Look for the shortened URL in the response
             content = response.text
@@ -2204,7 +2209,7 @@ def shorten_with_gg_gg(url):
                         'success': True,
                         'short_url': match.group()
                     }
-        
+
         return {
             'service': 'gg.gg',
             'success': False,
@@ -2226,7 +2231,7 @@ def init_db():
             inspector = db.inspect(db.engine)
             if inspector.has_table('user'):
                 columns = [col['name'] for col in inspector.get_columns('user')]
-                
+
                 # If old OAuth schema detected, drop all tables and recreate
                 if 'oauth_provider' in columns and 'password_hash' not in columns:
                     print("🔄 Migrating from OAuth to password authentication...")
@@ -2247,7 +2252,7 @@ def init_db():
                 # No tables exist, create them
                 db.create_all()
                 print("✅ Database initialized successfully!")
-                
+
         except Exception as e:
             print(f"❌ Database initialization error: {e}")
             # Force recreation on any error
@@ -2344,4 +2349,4 @@ def on_join(data):
 
 if __name__ == '__main__':
     print("🚀 Starting Secora IP Lookup App with SocketIO...")
-    socketio.run(app, debug=True) 
+    socketio.run(app, debug=True)
