@@ -1519,49 +1519,6 @@ def lookup_virustotal_community(ip_address):
 
 
 
-
-DOMAINS = None
-def mail_check(email, blocklist_path='email_deny_list.json'):
-    global DOMAINS
-
-    # Load blocklist on first call (cached for subsequent calls)
-    if DOMAINS is None:
-        try:
-            with open(blocklist_path, 'r') as f:
-                data = json.load(f)
-                DOMAINS = set(
-                    domain.lower() for domain in data.get('denied_domains', [])
-                )
-        except (FileNotFoundError, json.JSONDecodeError):
-            DOMAINS = set()
-
-    if not email or '@' not in email:
-        return False
-
-    # Extract and check domain
-    try:
-        parts = email.split('@')
-        if len(parts) != 2 or not parts[0] or not parts[1]:
-            return False
-
-        domain = parts[1].lower().strip()
-        # Return True if NOT in blocklist (valid), False if in blocklist.
-        return domain not in DOMAINS
-    except (IndexError, AttributeError):
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
 DOMAINS = None
 def mail_check(email, blocklist_path='email_deny_list.json'):
     global DOMAINS
@@ -1590,19 +1547,6 @@ def mail_check(email, blocklist_path='email_deny_list.json'):
         return domain not in DOMAINS
     except (IndexError, AttributeError):
         return False
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1724,13 +1668,7 @@ def register():
         # Filter out blacklisted email domains and temp mail domains.
         mail_check_flag = mail_check(email)
         if not mail_check_flag:
-            flash('Email domain provided is not allowed, please try a different email service.', 'error')
-            return render_template('auth/register.html')
-
-
-        mail_check_flag = mail_check(email)
-        if not mail_check_flag:
-            flash('Email domain used is not allowed. Please use a different email provider and try again.', 'error')
+            flash('Email domain provided is not allowed. Please use a different email provider and try again.', 'error')
             return render_template('auth/register.html')
 
 
