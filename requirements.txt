@@ -4,5 +4,6 @@ requests==2.31.0
 Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.2
 argon2-cffi==25.1.0
-
 flask-socketio 
+flask-mail
+redis
