@@ -50,12 +50,6 @@ email_verifier = EmailVerification(mail)
 
 
 
-
-
-
-
-
-
 # Database Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
