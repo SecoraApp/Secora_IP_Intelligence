@@ -1,4 +1,5 @@
 import requests
+from .ip_list import *
 
 def lookup_proxycheck(ip_address):
     """Check VPN/Proxy using proxycheck.io (free tier - 100 queries/day)"""
@@ -345,7 +346,7 @@ def get_vpn_provider_info(ip_address):
 
 def check_apple_nordvpn(ip_address):
     # Ensure lists are loaded
-    download_and_parse_ip_lists()
+    apple_ip_ranges, nordvpn_ips = download_and_parse_ip_lists()
     ip = ipaddress.ip_address(ip_address)
     # Check Apple
     for net in apple_ip_ranges:
