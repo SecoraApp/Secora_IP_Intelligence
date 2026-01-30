@@ -20,6 +20,7 @@ from flask_mail import Mail
 from email_verification import EmailVerification
 from utils import *
 from services import *
+from models import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -27,13 +28,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
+db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 socketio = SocketIO(app)
-
 
 app_pass = os.environ.get('APP_KEY')
 mail = Mail()
@@ -47,54 +47,6 @@ app.config.update(
 )
 mail.init_app(app)
 email_verifier = EmailVerification(mail)
-
-# Database Models
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    is_active = db.Column(db.Boolean, default=True)
-    email_confirmed = db.Column(db.Boolean, default=False, nullable=False)
-
-    def set_password(self, password):
-        """Hash and set password"""
-        self.password_hash = PasswordHasher().hash(password)
-
-
-    def check_password(self, password):
-        """Check if provided password matches hash"""
-        try:
-            PasswordHasher().verify(self.password_hash, password)
-            return True
-        except VerifyMismatchError:
-            return False
-        except Exception:
-            return False
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-class SearchHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    ip_address = db.Column(db.String(45), nullable=True)  # IPv4 or IPv6 (null for URL shortening)
-    search_type = db.Column(db.String(20), default='ip_lookup')  # 'ip_lookup' or 'url_shorten'
-    url_shortened = db.Column(db.Text, nullable=True)  # For URL shortening history
-    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref=db.backref('searches', lazy=True))
-
-class IPReport(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    ip_address = db.Column(db.String(45), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    report_type = db.Column(db.String(50), nullable=False)  # 'malicious', 'spam', 'suspicious', etc.
-    comment = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref=db.backref('reports', lazy=True))
 
 @login_manager.user_loader
 def load_user(user_id):
