@@ -20,6 +20,7 @@ from flask_mail import Mail
 from email_verification import EmailVerification
 from utils import *
 from services import *
+from models import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -27,13 +28,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
+db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 socketio = SocketIO(app)
-
 
 app_pass = os.environ.get('APP_KEY')
 mail = Mail()
@@ -48,54 +48,6 @@ app.config.update(
 mail.init_app(app)
 email_verifier = EmailVerification(mail)
 
-# Database Models
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    is_active = db.Column(db.Boolean, default=True)
-    email_confirmed = db.Column(db.Boolean, default=False, nullable=False)
-
-    def set_password(self, password):
-        """Hash and set password"""
-        self.password_hash = PasswordHasher().hash(password)
-
-
-    def check_password(self, password):
-        """Check if provided password matches hash"""
-        try:
-            PasswordHasher().verify(self.password_hash, password)
-            return True
-        except VerifyMismatchError:
-            return False
-        except Exception:
-            return False
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-class SearchHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    ip_address = db.Column(db.String(45), nullable=True)  # IPv4 or IPv6 (null for URL shortening)
-    search_type = db.Column(db.String(20), default='ip_lookup')  # 'ip_lookup' or 'url_shorten'
-    url_shortened = db.Column(db.Text, nullable=True)  # For URL shortening history
-    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref=db.backref('searches', lazy=True))
-
-class IPReport(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    ip_address = db.Column(db.String(45), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    report_type = db.Column(db.String(50), nullable=False)  # 'malicious', 'spam', 'suspicious', etc.
-    comment = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-
-    user = db.relationship('User', backref=db.backref('reports', lazy=True))
-
 @login_manager.user_loader
 def load_user(user_id):
     try:
@@ -104,48 +56,6 @@ def load_user(user_id):
         # If there's a schema error, return None to log out the user
         print(f"User loading error (schema mismatch): {e}")
         return None
-
-# Rate limiting storage (in production, use Redis or database)
-rate_limit_storage = defaultdict(lambda: deque())
-
-def rate_limit(max_requests=10, window_seconds=60):
-    """Rate limiting decorator"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Get client IP
-            client_ip = get_client_ip()
-            current_time = time.time()
-
-            # Clean old requests
-            requests_for_ip = rate_limit_storage[client_ip]
-            while requests_for_ip and current_time - requests_for_ip[0] > window_seconds:
-                requests_for_ip.popleft()
-
-            # Check rate limit
-            if len(requests_for_ip) >= max_requests:
-                return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-
-            # Add current request
-            requests_for_ip.append(current_time)
-
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-def get_client_ip():
-    """Safely get client IP address"""
-    # Check for forwarded headers (but validate them)
-    forwarded_ips = request.environ.get('HTTP_X_FORWARDED_FOR', '')
-    if forwarded_ips:
-        # Take the first IP, but validate it
-        first_ip = forwarded_ips.split(',')[0].strip()
-        if is_valid_ip(first_ip):
-            return first_ip
-
-    # Fallback to remote addr
-    remote_addr = request.environ.get('REMOTE_ADDR', '127.0.0.1')
-    return remote_addr if is_valid_ip(remote_addr) else '127.0.0.1'
 
 @app.after_request
 def after_request(response):
@@ -736,96 +646,6 @@ def shorten_url():
         # Log the error (in production, use proper logging)
         app.logger.error(f"Shortening error: {str(e)}")
         return jsonify({'error': 'An internal error occurred'}), 500
-
-# Initialize database
-def init_db():
-    """Initialize the database with proper schema migration"""
-    with app.app_context():
-        try:
-            # Check if we need to migrate from OAuth to password schema
-            inspector = db.inspect(db.engine)
-            if inspector.has_table('user'):
-                columns = [col['name'] for col in inspector.get_columns('user')]
-
-                # If old OAuth schema detected, drop all tables and recreate
-                if 'oauth_provider' in columns and 'password_hash' not in columns:
-                    print("🔄 Migrating from OAuth to password authentication...")
-                    db.drop_all()
-                    db.create_all()
-                    print("✅ Database migrated successfully!")
-                elif 'password_hash' not in columns:
-                    # Missing password_hash column, recreate tables
-                    print("🔄 Fixing database schema...")
-                    db.drop_all()
-                    db.create_all()
-                    print("✅ Database schema fixed!")
-                else:
-                    # Schema looks correct, just ensure all tables exist
-                    db.create_all()
-                    print("✅ Database schema verified!")
-            else:
-                # No tables exist, create them
-                db.create_all()
-                print("✅ Database initialized successfully!")
-
-        except Exception as e:
-            print(f"❌ Database initialization error: {e}")
-            # Force recreation on any error
-            try:
-                db.drop_all()
-                db.create_all()
-                print("✅ Database forcefully recreated!")
-            except Exception as e2:
-                print(f"❌ Failed to recreate database: {e2}")
-                print("💡 Please manually delete the instance/ip_lookup.db file and restart.")
-
-APPLE_IP_LIST_URL = "https://raw.githubusercontent.com/hroost/icloud-private-relay-iplist/refs/heads/main/ip-ranges.txt"
-NORDVPN_IP_LIST_URL = "https://gist.githubusercontent.com/JamoCA/eedaf4f7cce1cb0aeb5c1039af35f0b7/raw/cb6568528820c09e94cac7ef3461bc6cbf792e7e/NordVPN-Server-IP-List.txt"
-
-apple_ip_ranges = None
-nordvpn_ips = None
-ip_lists_lock = threading.Lock()
-
-def download_and_parse_ip_lists():
-    global apple_ip_ranges, nordvpn_ips
-    with ip_lists_lock:
-        if apple_ip_ranges is not None and nordvpn_ips is not None:
-            return
-        # Download Apple list
-        try:
-            import requests
-            apple_resp = requests.get(APPLE_IP_LIST_URL, timeout=10)
-            apple_ip_ranges = []
-            if apple_resp.status_code == 200:
-                for line in apple_resp.text.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        if '/' in line:
-                            apple_ip_ranges.append(ipaddress.ip_network(line, strict=False))
-                        else:
-                            apple_ip_ranges.append(ipaddress.ip_network(line + '/32'))
-                    except Exception:
-                        continue
-        except Exception:
-            apple_ip_ranges = []
-        # Download NordVPN list
-        try:
-            nordvpn_resp = requests.get(NORDVPN_IP_LIST_URL, timeout=10)
-            nordvpn_ips = set()
-            if nordvpn_resp.status_code == 200:
-                for line in nordvpn_resp.text.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        ip = ipaddress.ip_address(line)
-                        nordvpn_ips.add(ip)
-                    except Exception:
-                        continue
-        except Exception:
-            nordvpn_ips = set()
 
 @app.route('/lookup-count', methods=['GET'])
 @login_required
