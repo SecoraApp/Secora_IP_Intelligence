@@ -3,4 +3,3 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
-*.swp
