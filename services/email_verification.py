@@ -72,7 +72,7 @@ class EmailVerification:
 
         token = self.generate_token(user.email)
         confirm_url = url_for(
-            "confirm_email",
+            "auth.confirm_email",
             token=token,
             _external=True
         )

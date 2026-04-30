@@ -113,12 +113,12 @@
                     </div>
 
                     <nav class="sidebar-nav space-y-2">
-                        <a href="{{ url_for('index') }}" class="nav-item {{ 'active' if request.endpoint == 'index' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-white cursor-pointer hover:bg-gray-700 transition-colors">
+                        <a href="{{ url_for('main.index') }}" class="nav-item {{ 'active' if request.endpoint == 'main.index' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-white cursor-pointer hover:bg-gray-700 transition-colors">
                             <i class="fas fa-search"></i>
                             <span>IP Intelligence</span>
                         </a>
 
-                        <a href="{{ url_for('shortener') }}" class="nav-item {{ 'active' if request.endpoint == 'shortener' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
+                        <a href="{{ url_for('main.shortener') }}" class="nav-item {{ 'active' if request.endpoint == 'main.shortener' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
                             <i class="fas fa-link"></i>
                             <span>Multi URL Shortener</span>
                         </a>
@@ -131,27 +131,27 @@
                                     <p class="text-white font-medium">{{ current_user.username }}</p>
                                 </div>
 
-                                <a href="{{ url_for('profile') }}" class="nav-item {{ 'active' if request.endpoint == 'profile' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
+                                <a href="{{ url_for('auth.profile') }}" class="nav-item {{ 'active' if request.endpoint == 'auth.profile' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
                                     <i class="fas fa-user"></i>
                                     <span>Profile</span>
                                 </a>
 
-                                <a href="{{ url_for('history') }}" class="nav-item {{ 'active' if request.endpoint == 'history' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
+                                <a href="{{ url_for('auth.history') }}" class="nav-item {{ 'active' if request.endpoint == 'auth.history' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
                                     <i class="fas fa-history"></i>
                                     <span>Activity History</span>
                                 </a>
 
-                                <a href="{{ url_for('logout') }}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-700 cursor-pointer transition-colors">
+                                <a href="{{ url_for('auth.logout') }}" class="nav-item flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-700 cursor-pointer transition-colors">
                                     <i class="fas fa-sign-out-alt"></i>
                                     <span>Sign Out</span>
                                 </a>
                             {% else %}
-                                <a href="{{ url_for('login') }}" class="nav-item {{ 'active' if request.endpoint == 'login' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
+                                <a href="{{ url_for('auth.login') }}" class="nav-item {{ 'active' if request.endpoint == 'auth.login' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
                                     <i class="fas fa-sign-in-alt"></i>
                                     <span>Sign In</span>
                                 </a>
 
-                                <a href="{{ url_for('register') }}" class="nav-item {{ 'active' if request.endpoint == 'register' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
+                                <a href="{{ url_for('auth.register') }}" class="nav-item {{ 'active' if request.endpoint == 'auth.register' else '' }} flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 cursor-pointer transition-colors">
                                     <i class="fas fa-user-plus"></i>
                                     <span>Sign Up</span>
                                 </a>

@@ -14,12 +14,12 @@
     <div class="bg-dark-card rounded-lg border border-dark-border p-6 mb-8">
         <div class="flex flex-col sm:flex-row gap-4">
             <div class="flex-1">
-                <input type="url" 
-                       id="urlInput" 
-                       placeholder="Enter URL or domain to shorten (e.g., example.com or https://example.com)" 
+                <input type="url"
+                       id="urlInput"
+                       placeholder="Enter URL or domain to shorten (e.g., example.com or https://example.com)"
                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             </div>
-            <button onclick="shortenUrl()" 
+            <button onclick="shortenUrl()"
                     class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -72,7 +72,7 @@
                 <p class="text-xs text-gray-300">da.gd</p>
                 <span class="text-xs text-green-400">● Active</span>
             </div>
-            
+
             <!-- Public Form/API Services (Should work) -->
             <div class="bg-dark-card rounded-lg border border-dark-border p-3 text-center">
                 <i class="fas fa-broom text-green-500 text-xl mb-1"></i>
@@ -141,10 +141,10 @@
 
     function showResults(data) {
         hideLoading();
-        
+
         const resultsGrid = document.getElementById('resultsGrid');
         resultsGrid.innerHTML = '';
-        
+
         // Display original URL
         const originalCard = `
             <div class="bg-dark-card rounded-lg border border-dark-border p-4">
@@ -168,15 +168,15 @@
                 </div>
             </div>
         `;
-        
+
         resultsGrid.innerHTML += originalCard;
-        
+
         // Display shortened URLs
         data.results.forEach(result => {
             const statusColor = result.success ? 'green' : 'red';
             const statusIcon = result.success ? 'check-circle' : 'times-circle';
             const statusText = result.success ? 'Success' : 'Failed';
-            
+
             const card = `
                 <div class="bg-dark-card rounded-lg border border-dark-border p-4">
                     <div class="flex items-center justify-between mb-3">
@@ -210,17 +210,17 @@
                     </div>
                 </div>
             `;
-            
+
             resultsGrid.innerHTML += card;
         });
-        
+
         document.getElementById('resultsContainer').classList.remove('hidden');
     }
 
     async function shortenUrl() {
         const urlInput = document.getElementById('urlInput');
         let url = urlInput.value.trim();
-        
+
         if (!url) {
             showAlert('Please enter a URL to shorten');
             return;
@@ -228,7 +228,7 @@
 
         // Normalize the URL by adding https:// if no protocol is present
         url = normalizeUrl(url);
-        
+
         if (!validateUrl(url)) {
             showAlert('Please enter a valid domain name or URL');
             return;
@@ -273,4 +273,4 @@
     // Auto-focus input
     document.getElementById('urlInput').focus();
 </script>
-{% endblock %} 
+{% endblock %}

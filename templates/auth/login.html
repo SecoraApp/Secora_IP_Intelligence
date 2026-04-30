@@ -49,7 +49,7 @@
         </form>
 
         {% if show_resend and pending_user %}
-        <form method="POST" action="{{ url_for('resend_confirmation') }}" class="mt-4 text-center">
+        <form method="POST" action="{{ url_for('auth.resend_confirmation') }}" class="mt-4 text-center">
             <input type="hidden" name="user_id" value="{{ pending_user.id }}">
             <button
                 type="submit"
@@ -62,7 +62,7 @@
         <div class="mt-6 text-center">
             <p class="text-gray-400">
                 Don't have an account?
-                <a href="{{ url_for('register') }}" class="text-blue-400 hover:text-blue-300">
+                <a href="{{ url_for('auth.register') }}" class="text-blue-400 hover:text-blue-300">
                     Sign up here
                 </a>
             </p>
