@@ -102,7 +102,7 @@
 </div>
 
 <script>
-//Copy codes automatically to clipboard
+//copy codes to clipboard automatically.
 function copyBackupCodes() {
     var codes = {{ backup_codes | tojson }};
     navigator.clipboard.writeText(codes.join('\n')).then(function() {
