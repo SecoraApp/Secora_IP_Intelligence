@@ -1,3 +1,4 @@
+import os
 """
 routes/main.py — Main blueprint: IP lookup, reporting, URL shortener, and
 client-IP detection.
@@ -29,12 +30,20 @@ main_bp = Blueprint('main', __name__)
 _rate_limit_storage: dict[str, deque] = defaultdict(deque)
 
 
+# Set TRUST_PROXY_HEADERS=true in env only when running behind a known
+# reverse proxy (nginx, Cloudflare, etc.). When false, XFF is ignored
+# entirely so clients cannot spoof their IP for rate-limit bypass.
+_TRUST_PROXY = os.environ.get('TRUST_PROXY_HEADERS', '').lower() == 'true'
+
+
 def _get_client_ip():
-    forwarded = request.environ.get('HTTP_X_FORWARDED_FOR', '')
-    if forwarded:
-        first = forwarded.split(',')[0].strip()
-        if is_valid_ip(first):
-            return first
+    if _TRUST_PROXY:
+        forwarded = request.environ.get('HTTP_X_FORWARDED_FOR', '')
+        if forwarded:
+            # Take the leftmost (client) IP; proxies append their own
+            first = forwarded.split(',')[0].strip()
+            if is_valid_ip(first):
+                return first
     remote = request.environ.get('REMOTE_ADDR', '127.0.0.1')
     return remote if is_valid_ip(remote) else '127.0.0.1'
 
@@ -248,7 +257,6 @@ def get_ip_reports(ip_address):
                     'report_type': r.report_type,
                     'comment':     r.comment,
                     'timestamp':   r.timestamp.isoformat(),
-                    'username':    r.user.username,
                 }
                 for r in reports
             ],
@@ -330,6 +338,7 @@ def lookup_count():
 
 @socketio.on('join')
 def on_join(data):
-    user_id = data.get('user_id')
-    if user_id:
-        join_room(f'user_{user_id}')
+    # Only allow a logged-in user to join their own room.
+    # Ignore any client-supplied user_id — use the session identity.
+    if current_user.is_authenticated:
+        join_room(f'user_{current_user.id}')
