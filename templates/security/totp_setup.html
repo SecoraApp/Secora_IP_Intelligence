@@ -102,12 +102,7 @@
 </div>
 
 <script>
-// Auto-submit on 6 digits
-document.getElementById('verify-code').addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g, '');
-    if (this.value.length === 6) this.closest('form').submit();
-});
-
+//Copy codes automatically to clipboard
 function copyBackupCodes() {
     var codes = {{ backup_codes | tojson }};
     navigator.clipboard.writeText(codes.join('\n')).then(function() {
