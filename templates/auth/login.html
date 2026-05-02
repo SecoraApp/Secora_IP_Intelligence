@@ -25,6 +25,7 @@
 
         <!-- Password login -->
         <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
                 <input type="text"
@@ -78,6 +79,7 @@
 
         {% if show_resend and pending_user %}
         <form method="POST" action="{{ url_for('auth.resend_confirmation') }}" class="mt-4 text-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="email" value="{{ pending_user.email }}">
             <button type="submit" class="text-sm text-blue-400 hover:text-blue-300 underline">
                 Resend confirmation email
