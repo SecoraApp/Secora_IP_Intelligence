@@ -24,6 +24,7 @@
         {% endwith %}
 
         <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
