@@ -13,7 +13,7 @@ from core.extensions import db, socketio
 from core.models import IPReport, SearchHistory, User
 from services import mail_check
 from services.email_verification import EmailVerification
-from core.utils import is_valid_ip, sanitize_string
+from core.utils import is_valid_ip, sanitize_string, validate_password_complexity
 
 # Imported lazily inside routes to avoid circular imports at module load:
 # from routes.security import _verify_auth
@@ -85,7 +85,10 @@ def login():
                 login_user(user, remember=remember)
                 flash(f'Welcome back, {user.username}!', 'success')
                 next_page = request.args.get('next')
+                # Prevent open redirect: reject //host and /\host patterns
                 if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('main.index')
+                elif len(next_page) > 1 and next_page[1] in ('/', '\\'):
                     next_page = url_for('main.index')
                 return redirect(next_page)
 
@@ -185,8 +188,9 @@ def register():
             flash('Passwords do not match.', 'error')
             return render_template('auth/register.html')
 
-        if len(password) < 15:
-            flash('Password must be at least 15 characters long.', 'error')
+        pw_ok, pw_err = validate_password_complexity(password)
+        if not pw_ok:
+            flash(pw_err, 'error')
             return render_template('auth/register.html')
 
         if len(username) < 3:
@@ -520,8 +524,9 @@ def update_password():
         flash('New passwords do not match.', 'error')
         return redirect(url_for('auth.profile'))
 
-    if len(new_password) < 15:
-        flash('New password must be at least 15 characters.', 'error')
+    pw_ok, pw_err = validate_password_complexity(new_password)
+    if not pw_ok:
+        flash(pw_err, 'error')
         return redirect(url_for('auth.profile'))
 
     if current_password == new_password:
@@ -779,4 +784,3 @@ def microsoft_unlink():
         flash('Failed to unlink. Please try again.', 'error')
 
     return redirect(url_for('auth.profile'))
-
