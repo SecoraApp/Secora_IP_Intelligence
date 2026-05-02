@@ -41,6 +41,7 @@
         <p class="text-white text-sm font-medium mb-1">Regenerate backup codes</p>
         <p class="text-gray-400 text-xs mb-4">This will invalidate all existing backup codes.</p>
         <form method="POST" action="{{ url_for('security.totp_regenerate_backup_codes') }}" class="flex items-center space-x-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="code"
                    inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
                    placeholder="TOTP code"
