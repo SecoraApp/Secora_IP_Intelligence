@@ -10,11 +10,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_socketio import SocketIO
 from flask_mail import Mail
+from flask_wtf.csrf import CSRFProtect
 
-db           = SQLAlchemy()
+db            = SQLAlchemy()
 login_manager = LoginManager()
-socketio     = SocketIO()
-mail         = Mail()
+socketio      = SocketIO()
+mail          = Mail()
+csrf          = CSRFProtect()
 
 
 def init_extensions(app):
@@ -23,6 +25,7 @@ def init_extensions(app):
     login_manager.init_app(app)
     socketio.init_app(app)
     mail.init_app(app)
+    csrf.init_app(app)
 
     login_manager.login_view    = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
