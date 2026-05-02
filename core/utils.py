@@ -71,3 +71,28 @@ def sanitize_string(value, max_length=500):
     sanitized = html.escape(value.strip())[:max_length]
     sanitized = re.sub(r'[<>"\']', '', sanitized)
     return sanitized
+
+
+# ---------------------------------------------------------------------------
+# Password complexity
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+
+def validate_password_complexity(password: str) -> tuple[bool, str | None]:
+    """
+    Enforce the same rules shown in the frontend strength bar.
+    Returns (ok, error_message).
+    """
+    if len(password) < 15:
+        return False, 'Password must be at least 15 characters long.'
+    if not _re.search(r'[A-Z]', password):
+        return False, 'Password must contain at least one uppercase letter.'
+    if not _re.search(r'[a-z]', password):
+        return False, 'Password must contain at least one lowercase letter.'
+    if not _re.search(r'[0-9]', password):
+        return False, 'Password must contain at least one number.'
+    if not _re.search(r'[^A-Za-z0-9]', password):
+        return False, 'Password must contain at least one special character.'
+    return True, None
