@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Set Up Authenticator — Secora{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto pb-12">
+
+    <div class="mb-6">
+        <a href="{{ url_for('auth.profile') }}" class="text-sm text-gray-500 hover:text-gray-300 flex items-center space-x-1 transition-colors">
+            <i class="fas fa-arrow-left text-xs"></i><span>Back to settings</span>
+        </a>
+    </div>
+
+    <h1 class="text-2xl font-bold text-white mb-1">Set up authenticator</h1>
+    <p class="text-gray-400 text-sm mb-8">Follow the steps below to link your authenticator app.</p>
+
+    <!-- Step 1 — Scan -->
+    <div class="bg-dark-card border border-dark-border rounded-xl p-6 mb-4">
+        <div class="flex items-center space-x-3 mb-4">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+            <p class="text-white font-medium text-sm">Scan this QR code with your authenticator app</p>
+        </div>
+        <p class="text-gray-400 text-xs mb-4 ml-9">Works with Aegis, Google Authenticator, 1Password, Bitwarden, Authy, and any TOTP-compatible app.</p>
+
+        <!-- QR code -->
+        <div class="flex justify-center mb-4">
+            <div class="bg-white p-4 rounded-xl inline-block">
+                {{ qr_svg | safe }}
+            </div>
+        </div>
+
+        <!-- Manual entry fallback -->
+        <details class="ml-9">
+            <summary class="text-xs text-gray-500 hover:text-gray-300 cursor-pointer transition-colors select-none">
+                Can't scan? Enter the code manually
+            </summary>
+            <div class="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-700">
+                <p class="text-xs text-gray-400 mb-1">Account: <span class="text-gray-300">{{ current_user.email }}</span></p>
+                <p class="text-xs text-gray-400 mb-1">Issuer: <span class="text-gray-300">Secora</span></p>
+                <p class="text-xs text-gray-400 mb-1">Secret key:</p>
+                <code class="text-sm text-white font-mono tracking-widest break-all select-all">{{ secret }}</code>
+            </div>
+        </details>
+    </div>
+
+    <!-- Step 2 — Save backup codes -->
+    <div class="bg-dark-card border border-dark-border rounded-xl p-6 mb-4">
+        <div class="flex items-center space-x-3 mb-4">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+            <p class="text-white font-medium text-sm">Save your backup codes</p>
+        </div>
+        <p class="text-gray-400 text-xs mb-4 ml-9">If you lose access to your authenticator, these codes let you sign in. Each code can only be used once. Store them somewhere safe.</p>
+
+        <div class="ml-9 grid grid-cols-2 gap-2 mb-3">
+            {% for code in backup_codes %}
+            <code class="text-sm font-mono text-white bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-center tracking-widest">{{ code }}</code>
+            {% endfor %}
+        </div>
+
+        <div class="ml-9 flex space-x-2">
+            <button onclick="copyBackupCodes()" class="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1">
+                <i class="fas fa-copy"></i><span>Copy all</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3 — Verify -->
+    <div class="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div class="flex items-center space-x-3 mb-4">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+            <p class="text-white font-medium text-sm">Enter the 6-digit code from your app to confirm</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('security.totp_verify_setup') }}" class="ml-9">
+            <div class="flex items-center space-x-3">
+                <input type="text"
+                       name="code"
+                       id="verify-code"
+                       required
+                       inputmode="numeric"
+                       pattern="[0-9]{6}"
+                       maxlength="6"
+                       autocomplete="one-time-code"
+                       class="w-40 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-center text-xl font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+                       placeholder="000000">
+                <button type="submit"
+                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors">
+                    Activate
+                </button>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <p class="mt-2 text-sm {% if category == 'error' %}text-red-400{% else %}text-green-400{% endif %}">
+                    {{ message }}
+                </p>
+                {% endfor %}
+            {% endwith %}
+        </form>
+    </div>
+
+</div>
+
+<script>
+// Auto-submit on 6 digits
+document.getElementById('verify-code').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '');
+    if (this.value.length === 6) this.closest('form').submit();
+});
+
+function copyBackupCodes() {
+    var codes = {{ backup_codes | tojson }};
+    navigator.clipboard.writeText(codes.join('\n')).then(function() {
+        var btn = document.querySelector('[onclick="copyBackupCodes()"] span');
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy all'; }, 2000);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Backup Codes — Secora{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto pb-12">
+
+    <div class="mb-6">
+        <a href="{{ url_for('auth.profile') }}" class="text-sm text-gray-500 hover:text-gray-300 flex items-center space-x-1 transition-colors">
+            <i class="fas fa-arrow-left text-xs"></i><span>Back to settings</span>
+        </a>
+    </div>
+
+    <h1 class="text-2xl font-bold text-white mb-1">Backup codes</h1>
+    <p class="text-gray-400 text-sm mb-8">Use these if you lose access to your authenticator app. Each code works once only.</p>
+
+    <div class="bg-dark-card border border-amber-500/20 rounded-xl p-6 mb-4">
+        <div class="flex items-start space-x-3 mb-5 p-3 bg-amber-500/5 rounded-lg border border-amber-500/20">
+            <i class="fas fa-triangle-exclamation text-amber-400 mt-0.5 flex-shrink-0"></i>
+            <p class="text-xs text-gray-400">Save these somewhere safe. They will not be shown again after you leave this page.</p>
+        </div>
+
+        {% if codes %}
+        <div class="grid grid-cols-2 gap-2 mb-5">
+            {% for code in codes %}
+            <code class="text-sm font-mono text-white bg-gray-800 border border-gray-700 rounded px-3 py-2 text-center tracking-widest">{{ code }}</code>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <button onclick="copyBackupCodes()" class="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1.5">
+                <i class="fas fa-copy text-xs"></i><span id="copy-label">Copy all codes</span>
+            </button>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-sm">No backup codes remaining. Regenerate below.</p>
+        {% endif %}
+    </div>
+
+    <!-- Regenerate -->
+    <div class="bg-dark-card border border-dark-border rounded-xl p-6">
+        <p class="text-white text-sm font-medium mb-1">Regenerate backup codes</p>
+        <p class="text-gray-400 text-xs mb-4">This will invalidate all existing backup codes.</p>
+        <form method="POST" action="{{ url_for('security.totp_regenerate_backup_codes') }}" class="flex items-center space-x-3">
+            <input type="text" name="code"
+                   inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                   placeholder="TOTP code"
+                   class="w-36 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-center font-mono tracking-widest text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+            <button type="submit" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors font-medium">
+                Regenerate
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+function copyBackupCodes() {
+    var codes = {{ codes | tojson }};
+    navigator.clipboard.writeText(codes.join('\n')).then(function() {
+        var lbl = document.getElementById('copy-label');
+        lbl.textContent = 'Copied!';
+        setTimeout(function() { lbl.textContent = 'Copy all codes'; }, 2000);
+    });
+}
+</script>
+{% endblock %}
