@@ -14,7 +14,7 @@ from flask_wtf.csrf import CSRFProtect
 
 db            = SQLAlchemy()
 login_manager = LoginManager()
-socketio      = SocketIO()
+socketio      = SocketIO(async_mode='gevent')
 mail          = Mail()
 csrf          = CSRFProtect()
 
@@ -23,7 +23,7 @@ def init_extensions(app):
     """Bind all extensions to *app*."""
     db.init_app(app)
     login_manager.init_app(app)
-    socketio.init_app(app)
+    socketio.init_app(app, async_mode='gevent')
     mail.init_app(app)
     csrf.init_app(app)
 
