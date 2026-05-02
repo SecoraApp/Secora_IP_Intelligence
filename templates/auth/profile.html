@@ -119,6 +119,7 @@
                 </p>
             {% else %}
             <form method="POST" action="{{ url_for('auth.update_username') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">New username</label>
                     <input type="text" name="new_username" autocomplete="username"
@@ -152,6 +153,7 @@
         <div id="email-section" class="hidden border-t border-dark-border px-6 py-5">
             <p class="text-xs text-gray-500 mb-4">A confirmation link will be sent to your new address. Your email will update once confirmed.</p>
             <form method="POST" action="{{ url_for('auth.update_email') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">New email address</label>
                     <input type="email" name="new_email" autocomplete="email"
@@ -184,6 +186,7 @@
         </button>
         <div id="password-section" class="hidden border-t border-dark-border px-6 py-5">
             <form method="POST" action="{{ url_for('auth.update_password') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">Current password</label>
                     <input type="password" name="current_password" autocomplete="current-password"
@@ -262,6 +265,7 @@
                     </a>
                 </div>
                 <form method="POST" action="{{ url_for('security.totp_disable') }}" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <p class="text-xs text-gray-400 font-medium">Disable TOTP — enter your current code or password:</p>
                     <div class="flex flex-wrap gap-2">
                         <input type="text" name="code"
@@ -322,6 +326,7 @@
                         </div>
                         <form method="POST" action="{{ url_for('security.passkey_delete', cred_id=cred.id) }}"
                               onsubmit="return confirmPasskeyDelete(event, '{{ cred.device_name }}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="password" id="pk-del-password-{{ cred.id }}" value="">
                             <button type="button"
                                     onclick="promptPasskeyDelete({{ cred.id }}, this.closest('form'))"
@@ -389,6 +394,7 @@
                     </div>
                 </div>
                 <form method="POST" action="{{ url_for('auth.microsoft_unlink') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Current password to confirm unlink</label>
@@ -450,6 +456,7 @@
                 </div>
             </div>
             <form method="POST" action="{{ url_for('auth.delete_account') }}" onsubmit="return confirmDelete(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 mb-1">
