@@ -71,6 +71,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('security.totp_verify_setup') }}" class="ml-9">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex items-center space-x-3">
                 <input type="text"
                        name="code"
