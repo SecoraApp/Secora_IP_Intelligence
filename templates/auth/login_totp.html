@@ -33,6 +33,7 @@
 
         <!-- TOTP code form -->
         <form method="POST" class="space-y-4" id="totp-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div>
                 <label for="code" class="block text-sm font-medium text-gray-300 mb-2">6-digit code</label>
                 <input type="text"
@@ -62,6 +63,7 @@
                 <span class="relative bg-dark-card px-3">lost access to your app?</span>
             </div>
             <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="use_backup" value="1">
                 <button type="submit"
                         class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors flex items-center justify-center space-x-2">
