@@ -1,115 +1,632 @@
 {% extends "base.html" %}
-
-{% block title %}Profile - Secora{% endblock %}
+{% block title %}Account Settings — Secora{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="max-w-3xl mx-auto space-y-4 pb-12">
+    {# ── Auth confirmation field macro ──────────────────────────────────── #}
+    {# Renders a TOTP code input if 2FA enabled, otherwise a password field   #}
+    {% macro auth_confirm(field_name="confirm_password", label="Current password") %}
+        {% if current_user.totp_enabled %}
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">
+                Authenticator code <span class="text-gray-600">(required to confirm)</span>
+            </label>
+            <input type="text" name="totp_code"
+                   inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                   placeholder="000000"
+                   autocomplete="one-time-code"
+                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm text-center font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+        </div>
+        {% else %}
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">
+                {{ label }} <span class="text-gray-600">(required to confirm)</span>
+            </label>
+            <input type="password" name="{{ field_name }}" autocomplete="current-password"
+                   placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+        </div>
+        {% endif %}
+    {% endmacro %}
+
+
     <!-- Header -->
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-white mb-2">User Profile</h1>
-        <p class="text-gray-400">Manage your account and view your activity</p>
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Account Settings</h1>
+        <p class="text-gray-400 text-sm mt-1">Manage your identity, security, and data.</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- User Info -->
-        <div class="lg:col-span-1">
-            <div class="bg-dark-card rounded-lg border border-dark-border p-6">
-                <h2 class="text-xl font-bold text-white mb-4">Account Information</h2>
-
-                <div class="space-y-4">
-                    <div class="text-center mb-4">
-                        <div class="w-16 h-16 bg-blue-600 rounded-full mx-auto flex items-center justify-center border-2 border-gray-600">
-                            <i class="fas fa-user text-2xl text-white"></i>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
-                        <p class="text-white">{{ current_user.username }}</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
-                        <p class="text-white">{{ current_user.email }}</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Account Type</label>
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-shield-alt text-green-400"></i>
-                            <span class="text-white">Standard Account</span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Member Since</label>
-                        <p class="text-white">{{ current_user.created_at.strftime('%B %d, %Y') }}</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Total Searches</label>
-                        <p class="text-white">{{ current_user.searches|length }}</p>
-                    </div>
-                </div>
-
-                <div class="mt-6 pt-6 border-t border-gray-600">
-                    <a href="{{ url_for('auth.logout') }}"
-                       class="block w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white text-center rounded-lg transition-colors duration-200">
-                        <i class="fas fa-sign-out-alt mr-2"></i>
-                        Sign Out
-                    </a>
-                </div>
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="rounded-lg px-4 py-3 text-sm font-medium flex items-center space-x-2
+                {% if category == 'error' %}bg-red-500/10 border border-red-500/30 text-red-400
+                {% elif category == 'success' %}bg-green-500/10 border border-green-500/30 text-green-400
+                {% else %}bg-blue-500/10 border border-blue-500/30 text-blue-400{% endif %}">
+                <i class="fas {% if category == 'error' %}fa-circle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-info{% endif %}"></i>
+                <span>{{ message }}</span>
             </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- PROFILE OVERVIEW -->
+    <div class="bg-dark-card border border-dark-border rounded-xl p-6 flex items-center space-x-5">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 select-none">
+            {{ current_user.username[0].upper() }}
         </div>
-
-        <!-- Recent Activity -->
-        <div class="lg:col-span-2">
-            <div class="bg-dark-card rounded-lg border border-dark-border p-6">
-                <h2 class="text-xl font-bold text-white mb-4">Recent Activity</h2>
-
-                {% if recent_searches %}
-                    <div class="space-y-4">
-                        {% for search in recent_searches %}
-                            <div class="bg-gray-700 rounded-lg p-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center space-x-3">
-                                        {% if search.search_type == 'ip_lookup' %}
-                                            <i class="fas fa-search text-blue-400"></i>
-                                            <div>
-                                                <p class="text-white font-medium">IP Lookup</p>
-                                                <p class="text-gray-400 text-sm">{{ search.ip_address }}</p>
-                                            </div>
-                                        {% else %}
-                                            <i class="fas fa-link text-green-400"></i>
-                                            <div>
-                                                <p class="text-white font-medium">URL Shortened</p>
-                                                <p class="text-gray-400 text-sm break-all">{{ search.url_shortened }}</p>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-gray-400 text-sm">{{ search.timestamp.strftime('%m/%d/%Y') }}</p>
-                                        <p class="text-gray-500 text-xs">{{ search.timestamp.strftime('%I:%M %p') }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    {% if current_user.searches|length > 10 %}
-                        <div class="mt-6 text-center">
-                            <p class="text-gray-400 text-sm">Showing 10 most recent activities</p>
-                        </div>
-                    {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="text-white font-semibold text-lg leading-tight truncate">{{ current_user.username }}</p>
+            <p class="text-gray-400 text-sm truncate">{{ current_user.email }}</p>
+            <div class="flex items-center space-x-3 mt-2">
+                <span class="text-xs text-gray-500">Member since {{ current_user.created_at.strftime('%B %Y') }}</span>
+                <span class="text-gray-700">·</span>
+                <span class="text-xs text-gray-500">{{ current_user.searches|length }} searches</span>
+                {% if current_user.email_confirmed %}
+                <span class="text-gray-700">·</span>
+                <span class="text-xs text-green-400 flex items-center space-x-1"><i class="fas fa-circle-check text-xs"></i><span>Verified</span></span>
                 {% else %}
-                    <div class="text-center py-8">
-                        <i class="fas fa-history text-gray-500 text-4xl mb-4"></i>
-                        <p class="text-gray-400">No activity yet</p>
-                        <p class="text-gray-500 text-sm mt-2">Start using IP lookup or URL shortener to see your activity here</p>
-                    </div>
+                <span class="text-gray-700">·</span>
+                <span class="text-xs text-yellow-400 flex items-center space-x-1"><i class="fas fa-triangle-exclamation text-xs"></i><span>Email unverified</span></span>
                 {% endif %}
             </div>
         </div>
+        <a href="{{ url_for('auth.logout') }}" class="flex-shrink-0 text-sm text-gray-400 hover:text-red-400 transition-colors flex items-center space-x-1">
+            <i class="fas fa-right-from-bracket text-xs"></i>
+            <span>Sign out</span>
+        </a>
     </div>
+
+    <!-- USERNAME -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('username')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <i class="fas fa-at text-blue-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Username</p>
+                    <p class="text-gray-500 text-xs">{{ current_user.username }}</p>
+                </div>
+            </div>
+            <i id="username-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+        </button>
+        <div id="username-section" class="hidden border-t border-dark-border px-6 py-5">
+            {# Rate limit info #}
+            {% set remaining = current_user.username_changes_remaining() %}
+            <div class="flex items-start space-x-2 p-3 rounded-lg bg-gray-800/60 border border-gray-700 mb-4">
+                <i class="fas fa-circle-info text-gray-500 text-xs mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <p>
+                        You have
+                        <span class="{% if remaining == 0 %}text-red-400{% elif remaining == 1 %}text-yellow-400{% else %}text-gray-300{% endif %} font-medium">
+                            {{ remaining }} change{{ 's' if remaining != 1 else '' }}
+                        </span>
+                        remaining in this 30-day period.
+                    </p>
+                    <p class="text-gray-500">
+                        Once you change your username, your old one becomes available for anyone else to register.
+                    </p>
+                </div>
+            </div>
+            {% if remaining == 0 %}
+                {% set next_at = current_user.next_username_change_at() %}
+                <p class="text-xs text-red-400">
+                    <i class="fas fa-lock text-xs mr-1"></i>
+                    Username changes are locked until
+                    {{ next_at.strftime('%B %d, %Y at %I:%M %p UTC') if next_at else 'your next 30-day window' }}.
+                </p>
+            {% else %}
+            <form method="POST" action="{{ url_for('auth.update_username') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">New username</label>
+                    <input type="text" name="new_username" autocomplete="username"
+                           placeholder="{{ current_user.username }}"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-medium">
+                        Update username
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- EMAIL -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('email')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <i class="fas fa-envelope text-indigo-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Email address</p>
+                    <p class="text-gray-500 text-xs">{{ current_user.email }}</p>
+                </div>
+            </div>
+            <i id="email-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+        </button>
+        <div id="email-section" class="hidden border-t border-dark-border px-6 py-5">
+            <p class="text-xs text-gray-500 mb-4">A confirmation link will be sent to your new address. Your email will update once confirmed.</p>
+            <form method="POST" action="{{ url_for('auth.update_email') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">New email address</label>
+                    <input type="email" name="new_email" autocomplete="email"
+                           placeholder="new@example.com"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                {{ auth_confirm() }}
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-medium">
+                        Send confirmation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PASSWORD -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('password')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <i class="fas fa-lock text-emerald-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Password</p>
+                    <p class="text-gray-500 text-xs">Min. 15 characters</p>
+                </div>
+            </div>
+            <i id="password-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+        </button>
+        <div id="password-section" class="hidden border-t border-dark-border px-6 py-5">
+            <form method="POST" action="{{ url_for('auth.update_password') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Current password</label>
+                    <input type="password" name="current_password" autocomplete="current-password"
+                           placeholder="••••••••••••••••"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">New password <span class="text-gray-600">(min. 15 characters)</span></label>
+                    <input type="password" name="new_password" id="new_password" autocomplete="new-password"
+                           placeholder="••••••••••••••••"
+                           oninput="updateStrength(this.value)"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                    <div class="mt-2 h-1 rounded-full bg-gray-700 overflow-hidden">
+                        <div id="strength-bar" class="h-full rounded-full transition-all duration-300 w-0 bg-red-500"></div>
+                    </div>
+                    <p id="strength-label" class="text-xs text-gray-600 mt-1"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Confirm new password</label>
+                    <input type="password" name="confirm_new_password" autocomplete="new-password"
+                           placeholder="••••••••••••••••"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                {% if current_user.totp_enabled %}
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">
+                        Authenticator code <span class="text-gray-600">(2FA confirmation)</span>
+                    </label>
+                    <input type="text" name="totp_code"
+                           inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                           placeholder="000000" autocomplete="one-time-code"
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm text-center font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                {% endif %}
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-medium">
+                        Update password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TWO-FACTOR AUTH -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('2fa')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <i class="fas fa-shield-halved text-amber-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Two-factor authentication</p>
+                    <p class="text-gray-500 text-xs">Authenticator app (TOTP)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                {% if current_user.totp_enabled %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium">Enabled</span>
+                {% endif %}
+                <i id="2fa-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+            </div>
+        </button>
+        <div id="2fa-section" class="hidden border-t border-dark-border px-6 py-5">
+            {% if current_user.totp_enabled %}
+                <div class="flex items-start space-x-3 p-4 rounded-lg bg-green-500/5 border border-green-500/20 mb-4">
+                    <i class="fas fa-circle-check text-green-400 mt-0.5 text-sm flex-shrink-0"></i>
+                    <div>
+                        <p class="text-sm text-white font-medium mb-1">Authenticator app linked</p>
+                        <p class="text-xs text-gray-400">Your account is protected with a TOTP authenticator.</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <a href="{{ url_for('security.totp_backup_codes_view') }}"
+                       class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg transition-colors font-medium flex items-center space-x-1.5">
+                        <i class="fas fa-key text-xs"></i><span>View backup codes</span>
+                    </a>
+                </div>
+                <form method="POST" action="{{ url_for('security.totp_disable') }}" class="space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="text-xs text-gray-400 font-medium">Disable TOTP — enter your current code or password:</p>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="text" name="code"
+                               inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                               placeholder="6-digit code"
+                               class="w-36 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm text-center font-mono tracking-widest placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors">
+                        <span class="text-xs text-gray-500 self-center">or</span>
+                        <input type="password" name="password" autocomplete="current-password"
+                               placeholder="Password"
+                               class="flex-1 min-w-32 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors">
+                        <button type="submit"
+                                class="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white text-sm rounded-lg transition-colors font-medium">
+                            Disable
+                        </button>
+                    </div>
+                </form>
+            {% else %}
+                <p class="text-xs text-gray-400 mb-4">Add a one-time code from an authenticator app as a second login step. Works with Aegis, Google Authenticator, 1Password, Bitwarden, and more.</p>
+                <a href="{{ url_for('security.totp_setup') }}"
+                   class="inline-flex items-center space-x-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm rounded-lg transition-colors font-medium">
+                    <i class="fas fa-shield-halved text-sm"></i>
+                    <span>Set up authenticator app</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- PASSKEYS -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('passkeys')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <i class="fas fa-key text-purple-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Passkeys</p>
+                    <p class="text-gray-500 text-xs">Biometric and hardware key login</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                {% if current_user.passkeys_enabled %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium">{{ current_user.passkey_credentials|length }} registered</span>
+                {% endif %}
+                <i id="passkeys-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+            </div>
+        </button>
+        <div id="passkeys-section" class="hidden border-t border-dark-border px-6 py-5">
+            {% if current_user.passkey_credentials %}
+                <div class="space-y-2 mb-4">
+                    {% for cred in current_user.passkey_credentials %}
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-key text-purple-400 text-sm"></i>
+                            <div>
+                                <p class="text-white text-sm font-medium">{{ cred.device_name }}</p>
+                                <p class="text-gray-500 text-xs">Added {{ cred.created_at.strftime('%b %d, %Y') }}{% if cred.last_used_at %} &middot; Last used {{ cred.last_used_at.strftime('%b %d, %Y') }}{% endif %}</p>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ url_for('security.passkey_delete', cred_id=cred.id) }}"
+                              onsubmit="return confirmPasskeyDelete(event, '{{ cred.device_name }}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="password" id="pk-del-password-{{ cred.id }}" value="">
+                            <button type="button"
+                                    onclick="promptPasskeyDelete({{ cred.id }}, this.closest('form'))"
+                                    class="text-gray-500 hover:text-red-400 transition-colors p-1" title="Remove">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <p class="text-xs text-gray-400 mb-4">
+                Sign in with Face ID, Touch ID, Windows Hello, or a hardware key — no password needed.
+            </p>
+            <button id="register-passkey-btn"
+                    onclick="registerPasskey()"
+                    class="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-lg transition-colors font-medium">
+                <i class="fas fa-plus text-xs"></i>
+                <span>Add a passkey</span>
+            </button>
+            <p id="passkey-status" class="text-xs mt-2 hidden"></p>
+        </div>
+    </div>
+
+    <!-- MICROSOFT ORGANISATION -->
+    <div class="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <button onclick="toggleSection('microsoft')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <svg class="w-4 h-4" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0"  y="0"  width="10" height="10" fill="#F25022"/>
+                        <rect x="11" y="0"  width="10" height="10" fill="#7FBA00"/>
+                        <rect x="0"  y="11" width="10" height="10" fill="#00A4EF"/>
+                        <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+                    </svg>
+                </div>
+                <div class="text-left">
+                    <p class="text-white text-sm font-medium">Microsoft Organisation</p>
+                    {% if current_user.ms_linked %}
+                    <p class="text-green-400 text-xs flex items-center space-x-1">
+                        <i class="fas fa-circle-check text-xs"></i>
+                        <span>Linked &mdash; {{ current_user.ms_account_email }}</span>
+                    </p>
+                    {% else %}
+                    <p class="text-gray-500 text-xs">Link your Azure AD org admin account</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                {% if current_user.ms_linked %}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-medium">Connected</span>
+                {% endif %}
+                <i id="microsoft-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+            </div>
+        </button>
+        <div id="microsoft-section" class="hidden border-t border-dark-border px-6 py-5">
+            {% if current_user.ms_linked %}
+                <div class="flex items-start space-x-3 p-4 rounded-lg bg-green-500/5 border border-green-500/20 mb-5">
+                    <i class="fas fa-circle-check text-green-400 mt-0.5 text-sm flex-shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm text-white font-medium mb-1">Organisation account linked</p>
+                        <p class="text-xs text-gray-400 truncate">Account: <span class="text-gray-300">{{ current_user.ms_account_email }}</span></p>
+                        <p class="text-xs text-gray-400 mt-0.5">Tenant ID: <span class="text-gray-300 font-mono text-xs">{{ current_user.ms_tenant_id }}</span></p>
+                        <p class="text-xs text-gray-500 mt-0.5">Linked {{ current_user.ms_linked_at.strftime('%B %d, %Y') if current_user.ms_linked_at else 'recently' }}</p>
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('auth.microsoft_unlink') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Current password to confirm unlink</label>
+                            <input type="password" name="confirm_password" autocomplete="current-password"
+                                   placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-4 py-2 bg-gray-700 hover:bg-red-600 text-white text-sm rounded-lg transition-colors font-medium">
+                                Unlink Microsoft account
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            {% else %}
+                <div class="flex items-start space-x-3 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20 mb-5">
+                    <i class="fas fa-circle-info text-blue-400 mt-0.5 text-sm flex-shrink-0"></i>
+                    <div>
+                        <p class="text-sm text-white font-medium mb-1">Only org admins can complete this</p>
+                        <p class="text-xs text-gray-400">You will be redirected to Microsoft. If your account does not have Azure AD administrator privileges, Microsoft will deny the request. No changes will be made to your Secora account.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <a href="{{ url_for('auth.microsoft_link') }}"
+                       class="inline-flex items-center space-x-2 px-4 py-2 bg-[#2F2F2F] hover:bg-[#3d3d3d] border border-gray-600 text-white text-sm rounded-lg transition-colors font-medium">
+                        <svg class="w-4 h-4" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="0"  y="0"  width="10" height="10" fill="#F25022"/>
+                            <rect x="11" y="0"  width="10" height="10" fill="#7FBA00"/>
+                            <rect x="0"  y="11" width="10" height="10" fill="#00A4EF"/>
+                            <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+                        </svg>
+                        <span>Link Microsoft organisation</span>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+        <!-- DANGER ZONE -->
+    <div class="bg-dark-card border border-red-900/40 rounded-xl overflow-hidden">
+        <button onclick="toggleSection('danger')" class="w-full flex items-center justify-between px-6 py-4 hover:bg-red-500/[0.03] transition-colors">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <i class="fas fa-trash text-red-400 text-sm"></i>
+                </div>
+                <div class="text-left">
+                    <p class="text-red-400 text-sm font-medium">Delete account</p>
+                    <p class="text-gray-500 text-xs">Permanently remove your account and all data</p>
+                </div>
+            </div>
+            <i id="danger-chevron" class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-200"></i>
+        </button>
+        <div id="danger-section" class="hidden border-t border-red-900/40 px-6 py-5">
+            <div class="flex items-start space-x-3 p-4 rounded-lg bg-red-500/5 border border-red-500/20 mb-5">
+                <i class="fas fa-triangle-exclamation text-red-400 mt-0.5 text-sm flex-shrink-0"></i>
+                <div>
+                    <p class="text-sm text-white font-medium mb-1">This action is irreversible</p>
+                    <p class="text-xs text-gray-400">Deleting your account will permanently remove your profile, all search history, and all IP reports you have submitted. There is no recovery.</p>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('auth.delete_account') }}" onsubmit="return confirmDelete(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">
+                            Type <span class="text-white font-mono">{{ current_user.username }}</span> to confirm
+                        </label>
+                        <input type="text" name="confirm_username" id="confirm-username-input"
+                               placeholder="{{ current_user.username }}"
+                               autocomplete="off"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Current password</label>
+                        <input type="password" name="confirm_password" autocomplete="current-password"
+                               placeholder="••••••••••••••••"
+                               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors">
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded-lg transition-colors font-medium">
+                            Permanently delete account
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
+
+<script>
+function toggleSection(name) {
+    const section = document.getElementById(name + '-section');
+    const chevron = document.getElementById(name + '-chevron');
+    const isOpen  = !section.classList.contains('hidden');
+
+    ['username','email','password','2fa','passkeys','microsoft','danger'].forEach(function(n) {
+        document.getElementById(n + '-section').classList.add('hidden');
+        document.getElementById(n + '-chevron').style.transform = '';
+    });
+
+    if (!isOpen) {
+        section.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function updateStrength(val) {
+    var bar   = document.getElementById('strength-bar');
+    var label = document.getElementById('strength-label');
+    var score = 0;
+    if (val.length >= 15)           score++;
+    if (val.length >= 20)           score++;
+    if (/[A-Z]/.test(val))          score++;
+    if (/[0-9]/.test(val))          score++;
+    if (/[^A-Za-z0-9]/.test(val))  score++;
+
+    var levels = [
+        { pct: '20%',  color: 'bg-red-500',     textColor: 'text-red-500',     text: 'Very weak'   },
+        { pct: '40%',  color: 'bg-orange-500',  textColor: 'text-orange-500',  text: 'Weak'        },
+        { pct: '60%',  color: 'bg-yellow-400',  textColor: 'text-yellow-400',  text: 'Fair'        },
+        { pct: '80%',  color: 'bg-blue-400',    textColor: 'text-blue-400',    text: 'Strong'      },
+        { pct: '100%', color: 'bg-emerald-400', textColor: 'text-emerald-400', text: 'Very strong' },
+    ];
+
+    if (val.length === 0) { bar.style.width = '0'; label.textContent = ''; return; }
+
+    var lvl = levels[Math.min(score, 4)];
+    bar.style.width  = lvl.pct;
+    bar.className    = 'h-full rounded-full transition-all duration-300 ' + lvl.color;
+    label.textContent = lvl.text;
+    label.className  = 'text-xs mt-1 ' + lvl.textColor;
+}
+
+function confirmDelete(e) {
+    var typed    = document.getElementById('confirm-username-input').value.trim();
+    var expected = "{{ current_user.username }}";
+    if (typed !== expected) {
+        e.preventDefault();
+        alert('Username does not match. Type "' + expected + '" exactly.');
+        return false;
+    }
+    return confirm('Final confirmation: permanently delete your account and all data?');
+}
+
+
+// ── Passkey registration ──────────────────────────────────────────────────
+function base64urlToBuffer(base64url) {
+    var base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    var binary = atob(base64);
+    var buf = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
+    return buf.buffer;
+}
+
+function bufferToBase64url(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var str = '';
+    for (var i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function registerPasskey() {
+    var btn    = document.getElementById('register-passkey-btn');
+    var status = document.getElementById('passkey-status');
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Waiting for authenticator…';
+    status.classList.add('hidden');
+
+    try {
+        // Step 1: get options from server
+        var optRes = await fetch('/security/passkeys/register/begin', { method: 'POST' });
+        var options = await optRes.json();
+
+        // Convert base64url fields to ArrayBuffer
+        options.challenge = base64urlToBuffer(options.challenge);
+        options.user.id   = base64urlToBuffer(options.user.id);
+        if (options.excludeCredentials) {
+            options.excludeCredentials = options.excludeCredentials.map(function(c) {
+                return { ...c, id: base64urlToBuffer(c.id) };
+            });
+        }
+
+        // Step 2: ask browser/authenticator
+        var credential = await navigator.credentials.create({ publicKey: options });
+
+        var deviceName = prompt('Give this passkey a name (e.g. iPhone 15, YubiKey):', 'My Passkey') || 'Passkey';
+
+        // Step 3: send to server
+        var credData = {
+            device_name: deviceName,
+            credential: {
+                id:    credential.id,
+                rawId: bufferToBase64url(credential.rawId),
+                type:  credential.type,
+                response: {
+                    clientDataJSON:    bufferToBase64url(credential.response.clientDataJSON),
+                    attestationObject: bufferToBase64url(credential.response.attestationObject),
+                }
+            }
+        };
+
+        var verRes = await fetch('/security/passkeys/register/complete', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(credData),
+        });
+        var result = await verRes.json();
+
+        if (result.ok) {
+            status.textContent = 'Passkey "' + result.device_name + '" registered! Refreshing…';
+            status.className   = 'text-xs mt-2 text-green-400';
+            status.classList.remove('hidden');
+            setTimeout(function() { window.location.reload(); }, 1500);
+        } else {
+            throw new Error(result.error || 'Registration failed');
+        }
+    } catch (err) {
+        status.textContent = 'Error: ' + (err.message || 'Registration cancelled');
+        status.className   = 'text-xs mt-2 text-red-400';
+        status.classList.remove('hidden');
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'Add a passkey';
+    }
+}
+
+function promptPasskeyDelete(credId, form) {
+    var pw = prompt('Enter your password (or TOTP code) to remove this passkey:');
+    if (!pw) return;
+    form.querySelector('[id^="pk-del-password-"]').value = pw;
+    form.submit();
+}
+</script>
 {% endblock %}

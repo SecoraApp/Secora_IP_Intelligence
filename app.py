@@ -14,7 +14,7 @@ import os
 
 from flask import Flask
 
-from core.extensions import db, init_extensions
+from core.extensions import db, csrf, init_extensions
 from routes import register_blueprints
 from services.email_verification import EmailVerification
 
@@ -29,14 +29,29 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI']     = os.environ.get('DATABASE_URL', 'sqlite:///ip_lookup.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # ── Session & cookie security ─────────────────────────────────────────
+    app.config['SESSION_COOKIE_HTTPONLY']  = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE']   = os.environ.get('FLASK_ENV') == 'production'
+    app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+    app.config['REMEMBER_COOKIE_SECURE']  = os.environ.get('FLASK_ENV') == 'production'
+    app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
+
+    # ── CSRF ──────────────────────────────────────────────────────────────
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour token lifetime
+
     app.config.update(
-        MAIL_SERVER='smtp.gmail.com',
-        MAIL_PORT=587,
+        MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
+        MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
         MAIL_USE_TLS=True,
-        MAIL_USERNAME='secoraapp@gmail.com',
-        MAIL_PASSWORD=os.environ.get('APP_KEY'),
-        MAIL_DEFAULT_SENDER='Secora <secoraapp@gmail.com>',
+        MAIL_USERNAME=os.environ.get('MAIL_USERNAME', ''),
+        MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', ''),
+        MAIL_DEFAULT_SENDER=os.environ.get('MAIL_DEFAULT_SENDER', 'Secora <noreply@secora.app>'),
     )
+
+    # WebAuthn config (read from env so deployment file is the single source)
+    app.config['WEBAUTHN_RP_ID']  = os.environ.get('WEBAUTHN_RP_ID',  'localhost')
+    app.config['WEBAUTHN_ORIGIN'] = os.environ.get('WEBAUTHN_ORIGIN', 'http://localhost:5000')
 
     # -----------------------------------------------------------------------
     # Extensions
@@ -60,6 +75,19 @@ def create_app():
     # Blueprints
     # -----------------------------------------------------------------------
     register_blueprints(app)
+
+    # ── CSRF exemptions for JSON API endpoints ────────────────────────────
+    # These endpoints receive application/json bodies from JS fetch() calls.
+    # CSRF tokens in JSON APIs are redundant when SameSite=Lax is set on
+    # cookies, but we exempt explicitly to avoid 400s from the decorator.
+    from routes.main import (lookup, shorten_url, get_my_ip, report_ip,
+                             get_ip_reports)
+    from routes.security import (passkey_register_begin, passkey_register_complete,
+                                  passkey_authenticate_begin, passkey_authenticate_complete)
+    for view in [lookup, shorten_url, get_my_ip, report_ip, get_ip_reports,
+                 passkey_register_begin, passkey_register_complete,
+                 passkey_authenticate_begin, passkey_authenticate_complete]:
+        csrf.exempt(view)
 
     # -----------------------------------------------------------------------
     # Security headers
@@ -122,5 +150,5 @@ if __name__ == '__main__':
     from core.extensions import socketio
     application = create_app()
     init_db(application)
-    print("Starting Secora IP Intelligence…")
+    print("🚀 Starting Secora IP Intelligence…")
     socketio.run(application, debug=True)

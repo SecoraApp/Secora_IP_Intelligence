@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-
-{% block title %}Register - Secora{% endblock %}
+{% block title %}Register — Secora{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto mt-8">
@@ -10,48 +9,82 @@
             <p class="text-gray-400">Join Secora today</p>
         </div>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 rounded-lg px-4 py-3 text-sm font-medium flex items-center space-x-2
+                    {% if category == 'error' %}bg-red-500/10 border border-red-500/30 text-red-400
+                    {% elif category == 'success' %}bg-green-500/10 border border-green-500/30 text-green-400
+                    {% else %}bg-blue-500/10 border border-blue-500/30 text-blue-400{% endif %}">
+                    <i class="fas {% if category == 'error' %}fa-circle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-info{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
                 <input type="text"
-                       id="username"
-                       name="username"
-                       required
-                       minlength="3"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       id="username" name="username"
+                       required minlength="3"
+                       autocomplete="username"
+                       value="{{ request.form.username or '' }}"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Choose a username">
             </div>
 
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email</label>
                 <input type="email"
-                       id="email"
-                       name="email"
+                       id="email" name="email"
                        required
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       autocomplete="email"
+                       value="{{ request.form.email or '' }}"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Enter your email">
             </div>
 
+            <!-- Password with strength meter -->
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
                 <input type="password"
-                       id="password"
-                       name="password"
-                       required
-                       minlength="6"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       id="password" name="password"
+                       required minlength="15"
+                       autocomplete="new-password"
+                       oninput="updateStrength(this.value)"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Create a password">
+
+                <!-- Strength bar -->
+                <div class="mt-2 h-1.5 rounded-full bg-gray-700 overflow-hidden">
+                    <div id="strength-bar" class="h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+                <p id="strength-label" class="text-xs mt-1 text-gray-600 h-4"></p>
+
+                <!-- Requirements checklist -->
+                <ul class="mt-3 space-y-1.5" id="req-list">
+                    <li id="req-length"   class="flex items-center space-x-2 text-xs text-gray-500"><i class="fas fa-circle text-gray-700 text-xs w-3"></i><span>At least 15 characters</span></li>
+                    <li id="req-upper"    class="flex items-center space-x-2 text-xs text-gray-500"><i class="fas fa-circle text-gray-700 text-xs w-3"></i><span>One uppercase letter (A–Z)</span></li>
+                    <li id="req-lower"    class="flex items-center space-x-2 text-xs text-gray-500"><i class="fas fa-circle text-gray-700 text-xs w-3"></i><span>One lowercase letter (a–z)</span></li>
+                    <li id="req-number"   class="flex items-center space-x-2 text-xs text-gray-500"><i class="fas fa-circle text-gray-700 text-xs w-3"></i><span>One number (0–9)</span></li>
+                    <li id="req-special"  class="flex items-center space-x-2 text-xs text-gray-500"><i class="fas fa-circle text-gray-700 text-xs w-3"></i><span>One special character (!@#$…)</span></li>
+                </ul>
             </div>
 
             <div>
                 <label for="confirm_password" class="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
                 <input type="password"
-                       id="confirm_password"
-                       name="confirm_password"
-                       required
-                       minlength="6"
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       id="confirm_password" name="confirm_password"
+                       required minlength="15"
+                       autocomplete="new-password"
+                       oninput="checkMatch()"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Confirm your password">
+                <p id="match-msg" class="text-xs mt-1 h-4"></p>
             </div>
 
             <button type="submit"
@@ -69,4 +102,73 @@
         </div>
     </div>
 </div>
+
+<script>
+var requirements = [
+    { id: 'req-length',  test: function(v) { return v.length >= 15; } },
+    { id: 'req-upper',   test: function(v) { return /[A-Z]/.test(v); } },
+    { id: 'req-lower',   test: function(v) { return /[a-z]/.test(v); } },
+    { id: 'req-number',  test: function(v) { return /[0-9]/.test(v); } },
+    { id: 'req-special', test: function(v) { return /[^A-Za-z0-9]/.test(v); } },
+];
+
+var levels = [
+    { pct: '20%',  color: 'bg-red-500',     textColor: 'text-red-400',     label: 'Very weak'   },
+    { pct: '40%',  color: 'bg-orange-500',  textColor: 'text-orange-400',  label: 'Weak'        },
+    { pct: '60%',  color: 'bg-yellow-400',  textColor: 'text-yellow-400',  label: 'Fair'        },
+    { pct: '80%',  color: 'bg-blue-400',    textColor: 'text-blue-400',    label: 'Strong'      },
+    { pct: '100%', color: 'bg-emerald-400', textColor: 'text-emerald-400', label: 'Very strong' },
+];
+
+function updateStrength(val) {
+    var bar   = document.getElementById('strength-bar');
+    var lbl   = document.getElementById('strength-label');
+    var score = 0;
+
+    requirements.forEach(function(req) {
+        var li   = document.getElementById(req.id);
+        var icon = li.querySelector('i');
+        var met  = req.test(val);
+        if (met) {
+            score++;
+            icon.className = 'fas fa-circle-check text-emerald-400 text-xs w-3';
+            li.className   = 'flex items-center space-x-2 text-xs text-emerald-400';
+        } else {
+            icon.className = 'fas fa-circle text-gray-700 text-xs w-3';
+            li.className   = 'flex items-center space-x-2 text-xs text-gray-500';
+        }
+    });
+
+    if (!val) {
+        bar.style.width = '0';
+        bar.className   = 'h-full rounded-full transition-all duration-300';
+        lbl.textContent = '';
+        lbl.className   = 'text-xs mt-1 h-4';
+        return;
+    }
+
+    var lvl = levels[Math.min(score - 1, 4)];
+    if (score === 0) lvl = levels[0];
+    bar.style.width = lvl.pct;
+    bar.className   = 'h-full rounded-full transition-all duration-300 ' + lvl.color;
+    lbl.textContent = lvl.label;
+    lbl.className   = 'text-xs mt-1 h-4 ' + lvl.textColor;
+
+    checkMatch();
+}
+
+function checkMatch() {
+    var p1  = document.getElementById('password').value;
+    var p2  = document.getElementById('confirm_password').value;
+    var msg = document.getElementById('match-msg');
+    if (!p2) { msg.textContent = ''; return; }
+    if (p1 === p2) {
+        msg.textContent = 'Passwords match';
+        msg.className   = 'text-xs mt-1 h-4 text-emerald-400';
+    } else {
+        msg.textContent = 'Passwords do not match';
+        msg.className   = 'text-xs mt-1 h-4 text-red-400';
+    }
+}
+</script>
 {% endblock %}

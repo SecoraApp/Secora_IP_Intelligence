@@ -98,3 +98,69 @@ If you did not create this account, you can safely ignore this email.
 """
         self.mail.send(msg)
         return True
+
+    # -----------------------------------------------------------------------
+    # Email address change
+    # -----------------------------------------------------------------------
+
+    def generate_email_change_token(self, user_id, new_email):
+        """Encode both the user ID and the desired new email into a signed token."""
+        return self._serializer().dumps(
+            {'user_id': user_id, 'new_email': new_email},
+            salt='email-change-salt'
+        )
+
+    def confirm_email_change_token(self, token):
+        """
+        Validate a change token.
+        Returns (user_id, new_email) on success, or None if invalid/expired.
+        """
+        try:
+            data = self._serializer().loads(
+                token,
+                salt='email-change-salt',
+                max_age=TOKEN_EXPIRATION
+            )
+            return data['user_id'], data['new_email']
+        except (BadSignature, SignatureExpired, KeyError):
+            return None
+
+    def send_email_change_confirmation(self, user, new_email):
+        """
+        Send a confirmation link to *new_email*.
+        The address only changes once the user clicks the link.
+        Respects the same resend cooldown as registration confirmations,
+        keyed on the *new* address so the old address is unaffected.
+        """
+        if not self.can_resend(new_email):
+            return False
+
+        token = self.generate_email_change_token(user.id, new_email)
+        confirm_url = url_for(
+            'auth.confirm_email_change',
+            token=token,
+            _external=True
+        )
+
+        msg = Message(
+            subject='Confirm your new Secora email address',
+            recipients=[new_email],
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER')
+        )
+
+        msg.body = f"""
+Hello {user.username},
+
+We received a request to change your Secora email address to this one.
+Click the link below to confirm the change:
+
+
+Confirmation Link: {confirm_url}
+
+
+This link will expire in 1 hour.
+If you did not request this change, you can safely ignore this email —
+your original address will remain unchanged.
+"""
+        self.mail.send(msg)
+        return True

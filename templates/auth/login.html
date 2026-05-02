@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-
-{% block title %}Login - Secora{% endblock %}
+{% block title %}Sign In — Secora{% endblock %}
 
 {% block content %}
 <div class="max-w-md mx-auto mt-8">
@@ -10,14 +9,32 @@
             <p class="text-gray-400">Welcome back to Secora</p>
         </div>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 rounded-lg px-4 py-3 text-sm font-medium flex items-center space-x-2
+                    {% if category == 'error' %}bg-red-500/10 border border-red-500/30 text-red-400
+                    {% elif category == 'success' %}bg-green-500/10 border border-green-500/30 text-green-400
+                    {% else %}bg-blue-500/10 border border-blue-500/30 text-blue-400{% endif %}">
+                    <i class="fas {% if category == 'error' %}fa-circle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-info{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Password login -->
         <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
                 <input type="text"
                        id="username"
                        name="username"
                        required
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       autocomplete="username"
+                       value="{{ request.args.get('username', '') }}"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Enter your username">
             </div>
 
@@ -27,18 +44,15 @@
                        id="password"
                        name="password"
                        required
-                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       autocomplete="current-password"
+                       class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                        placeholder="Enter your password">
             </div>
 
             <div class="flex items-center">
-                <input type="checkbox"
-                       id="remember"
-                       name="remember"
+                <input type="checkbox" id="remember" name="remember"
                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                <label for="remember" class="ml-2 block text-sm text-gray-300">
-                    Remember me
-                </label>
+                <label for="remember" class="ml-2 block text-sm text-gray-300">Remember me</label>
             </div>
 
             <button type="submit"
@@ -48,12 +62,26 @@
             </button>
         </form>
 
+        <!-- Passkey login -->
+        <div class="mt-4">
+            <div class="relative flex items-center justify-center text-xs text-gray-600 my-4">
+                <span class="absolute inset-x-0 top-1/2 h-px bg-gray-700"></span>
+                <span class="relative bg-dark-card px-3">or</span>
+            </div>
+            <button id="passkey-login-btn"
+                    onclick="loginWithPasskey()"
+                    class="w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-medium rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                <i class="fas fa-key text-sm"></i>
+                <span id="passkey-btn-label">Sign in with a passkey</span>
+            </button>
+            <p id="passkey-error" class="text-xs text-red-400 mt-2 text-center hidden"></p>
+        </div>
+
         {% if show_resend and pending_user %}
         <form method="POST" action="{{ url_for('auth.resend_confirmation') }}" class="mt-4 text-center">
-            <input type="hidden" name="user_id" value="{{ pending_user.id }}">
-            <button
-                type="submit"
-                class="text-sm text-blue-400 hover:text-blue-300 underline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="email" value="{{ pending_user.email }}">
+            <button type="submit" class="text-sm text-blue-400 hover:text-blue-300 underline">
                 Resend confirmation email
             </button>
         </form>
@@ -62,11 +90,81 @@
         <div class="mt-6 text-center">
             <p class="text-gray-400">
                 Don't have an account?
-                <a href="{{ url_for('auth.register') }}" class="text-blue-400 hover:text-blue-300">
-                    Sign up here
-                </a>
+                <a href="{{ url_for('auth.register') }}" class="text-blue-400 hover:text-blue-300">Sign up here</a>
             </p>
         </div>
     </div>
 </div>
+
+<script>
+function base64urlToBuffer(b) {
+    var s = b.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    var bin = atob(s), buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return buf.buffer;
+}
+function bufferToBase64url(buf) {
+    var b = new Uint8Array(buf), s = '';
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function loginWithPasskey() {
+    var btn   = document.getElementById('passkey-login-btn');
+    var label = document.getElementById('passkey-btn-label');
+    var err   = document.getElementById('passkey-error');
+    btn.disabled = true;
+    label.textContent = 'Waiting for authenticator\u2026';
+    err.classList.add('hidden');
+
+    try {
+        var username = document.getElementById('username').value.trim();
+        var optRes = await fetch('/security/passkeys/authenticate/begin', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username: username }),
+        });
+        var options = await optRes.json();
+
+        options.challenge = base64urlToBuffer(options.challenge);
+        if (options.allowCredentials) {
+            options.allowCredentials = options.allowCredentials.map(function(c) {
+                return { ...c, id: base64urlToBuffer(c.id) };
+            });
+        }
+
+        var assertion = await navigator.credentials.get({ publicKey: options });
+
+        var res = await fetch('/security/passkeys/authenticate/complete', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id:    assertion.id,
+                rawId: bufferToBase64url(assertion.rawId),
+                type:  assertion.type,
+                response: {
+                    clientDataJSON:    bufferToBase64url(assertion.response.clientDataJSON),
+                    authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+                    signature:         bufferToBase64url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle
+                        ? bufferToBase64url(assertion.response.userHandle) : null,
+                }
+            }),
+        });
+        var data = await res.json();
+
+        if (data.ok && data.redirect) {
+            window.location.href = data.redirect;
+        } else {
+            throw new Error(data.error || 'Authentication failed');
+        }
+    } catch (e) {
+        err.textContent = e.message || 'Passkey sign-in cancelled or failed.';
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        label.textContent = 'Sign in with a passkey';
+    }
+}
+</script>
 {% endblock %}
