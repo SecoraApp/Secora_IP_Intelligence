@@ -10,13 +10,47 @@ Wiring order:
   6. Initialise / migrate the database
 """
 
+import logging
 import os
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 
 from core.extensions import db, csrf, init_extensions
 from routes import register_blueprints
 from services.email_verification import EmailVerification
+
+
+def setup_logging(app):
+    """Write app errors to /var/secora_app/logs/app.log with rotation."""
+    log_dir = '/var/secora_app/logs'
+    log_path = os.path.join(log_dir, 'app.log')
+
+    # Fall back to current directory if log dir doesn't exist (dev mode)
+    if not os.path.isdir(log_dir):
+        log_path = 'app.log'
+
+    handler = RotatingFileHandler(
+        log_path,
+        maxBytes=5 * 1024 * 1024,  # 5 MB
+        backupCount=5,
+        encoding='utf-8',
+    )
+    handler.setLevel(logging.WARNING)
+    handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    ))
+
+    app.logger.addHandler(handler)
+    app.logger.setLevel(logging.WARNING)
+
+    # Also log to stderr so journalctl catches it
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    ))
+    app.logger.addHandler(stream_handler)
 
 
 def create_app():
@@ -26,7 +60,7 @@ def create_app():
     # Configuration
     # -----------------------------------------------------------------------
     app.config['SECRET_KEY']                  = os.environ.get('SECRET_KEY', 'change-me-in-production')
-    app.config['SQLALCHEMY_DATABASE_URI']     = os.environ.get('DATABASE_URL', 'sqlite:///ip_lookup.db')
+    app.config['SQLALCHEMY_DATABASE_URI']     = os.environ.get('DATABASE_URL', 'sqlite:////ip_lookup.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # ── Session & cookie security ─────────────────────────────────────────
@@ -43,7 +77,7 @@ def create_app():
     app.config.update(
         MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
         MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
-        MAIL_USE_TLS=True,
+        MAIL_USE_TLS=os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true',
         MAIL_USERNAME=os.environ.get('MAIL_USERNAME', ''),
         MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', ''),
         MAIL_DEFAULT_SENDER=os.environ.get('MAIL_DEFAULT_SENDER', 'Secora <noreply@secora.app>'),
@@ -96,11 +130,11 @@ def create_app():
     def add_security_headers(response):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com; "
+            "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; "
             "font-src 'self' cdnjs.cloudflare.com; "
             "img-src 'self' data:; "
-            "connect-src 'self';"
+            "connect-src 'self' https://cloudflareinsights.com;"
         )
         response.headers['X-Content-Type-Options']  = 'nosniff'
         response.headers['X-Frame-Options']         = 'DENY'
@@ -109,6 +143,7 @@ def create_app():
         response.headers.pop('Server', None)
         return response
 
+    setup_logging(app)
     return app
 
 
@@ -146,9 +181,11 @@ def init_db(app):
                 print("💡 Delete instance/ip_lookup.db and restart.")
 
 
+# Module-level app instance — used by gunicorn (app:application)
+application = create_app()
+init_db(application)
+
 if __name__ == '__main__':
     from core.extensions import socketio
-    application = create_app()
-    init_db(application)
     print("🚀 Starting Secora IP Intelligence…")
     socketio.run(application, debug=True)
