@@ -5,8 +5,8 @@ confirmation, logout, profile, and history.
 
 from datetime import datetime, timezone
 
-from flask import (Blueprint, flash, jsonify, redirect, render_template,
-                   request, url_for)
+from flask import (Blueprint, current_app, flash, jsonify, redirect,
+                   render_template, request, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 
 from core.extensions import db, socketio
@@ -216,12 +216,26 @@ def register():
         try:
             db.session.add(user)
             db.session.commit()
-            _email_verifier().send_confirmation(user)
-            flash('Account created! Please check your email to verify.', 'success')
-            return redirect(url_for('auth.login', username=username))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f'Registration DB error for {username!r}: {e}')
             flash('Registration failed. Please try again or contact support.', 'error')
+            return render_template('auth/register.html')
+
+        # Email send is separate — a mail failure shouldn't undo the account
+        try:
+            _email_verifier().send_confirmation(user)
+        except Exception as e:
+            current_app.logger.error(f'Confirmation email failed for {username!r}: {e}')
+            flash(
+                'Account created but we could not send a confirmation email. '
+                'Please use the resend option on the login page.',
+                'error'
+            )
+            return redirect(url_for('auth.login', username=username))
+
+        flash('Account created! Please check your email to verify.', 'success')
+        return redirect(url_for('auth.login', username=username))
 
     return render_template('auth/register.html')
 
