@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * Custom theme — replaces tailwind.config.js in v4.
+ * These CSS variables are used throughout the templates as
+ * bg-dark-bg, text-accent-blue, border-dark-border, etc.
+ */
+@theme {
+    --color-dark-bg:           #0f172a;
+    --color-dark-card:         #1e293b;
+    --color-dark-border:       #334155;
+    --color-accent-blue:       #3b82f6;
+    --color-accent-green:      #10b981;
+    --color-accent-red:        #ef4444;
+    --color-accent-yellow:     #f59e0b;
+    --color-secora-primary:    #3b82f6;
+    --color-secora-secondary:  #1e293b;
+
+    --scale-102: 1.02;
+}
+
+/*
+ * Tell v4 where to scan for classes.
+ * v4 auto-detects most sources but we specify explicitly to be safe.
+ */
+@source "../../templates";
+@source "../../static/js";
