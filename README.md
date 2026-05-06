@@ -6,7 +6,19 @@ __ __
 <br>
 <br>
 
-# ChangeLog | In this Update
+
+
+# ChangeLog
+
+In this Update | 05/06/26
+ - [x] Upated tailwinds css to latest build as of this date for production environment.
+ - [x] Deleting activities from your activity history now works again.
+ - [x] Backup codes for 2fa/totp authentication are no longer displayed in the page where you go to refresh your codes. (after you have already enabled the feature and copied the codes)
+__ __
+
+<br>
+
+> Update | 05/02/26
  - [x] Overhaul to how the account settings page looks like.
  - [x] Added infrastructure for handling when a user wants to change their username, email, password.
  - [x] Added options/buttons for 2fa & passkeys.
