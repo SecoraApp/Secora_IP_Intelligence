@@ -251,7 +251,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 <script>
     let lookupCount = parseInt('{{ lookups_today or 0 }}');
     let currentSearchedIP = '';
@@ -565,7 +565,7 @@
             }
             let commentsHtml = '';
             if (comments.length > 0) {
-                commentsHtml += '<div class="grid grid-cols-2 gap-2">';
+                commentsHtml += '<div class="grid grid-cols-1 md:grid-cols-2 gap-2">';
                 for (let i = 0; i < 6; i++) {
                     if (comments[i]) {
                         const c = comments[i];
@@ -585,13 +585,13 @@
             }
             abuseipdbHtml +=
                 '<div class="mt-3 pt-3 border-t border-gray-600">' +
-                    '<div class="flex items-center space-x-2 mb-2">' +
-                        '<img src="https://www.abuseipdb.com/favicon.ico" class="w-5 h-5" alt="AbuseIPDB">' +
+                    '<div class="flex flex-wrap items-center gap-2 mb-3">' +
+                        '<img src="https://www.abuseipdb.com/favicon.ico" class="w-5 h-5 flex-shrink-0" alt="AbuseIPDB">' +
                         '<span class="text-red-300 font-bold">AbuseIPDB Reports</span>' +
-                        '<span class="text-xs bg-red-600 px-2 py-1 rounded text-white">' + sanitizedData.abuseipdb_total_reports + ' reports</span>' +
-                        (sanitizedData.abuseipdb_confidence_score !== undefined ? '<span class="text-xs bg-orange-600 px-2 py-1 rounded text-white">Confidence: ' + sanitizedData.abuseipdb_confidence_score + '%</span>' : '') +
+                        '<span class="text-xs bg-red-600 px-2 py-1 rounded text-white whitespace-nowrap">' + sanitizedData.abuseipdb_total_reports + ' reports</span>' +
+                        (sanitizedData.abuseipdb_confidence_score !== undefined ? '<span class="text-xs bg-orange-600 px-2 py-1 rounded text-white whitespace-nowrap">Confidence: ' + sanitizedData.abuseipdb_confidence_score + '%</span>' : '') +
                     '</div>' +
-                    '<div class="space-y-1">' +
+                    '<div class="space-y-2">' +
                         '<div class="text-xs text-gray-400 mb-1">Recent Comments:</div>' +
                         commentsHtml +
                     '</div>' +

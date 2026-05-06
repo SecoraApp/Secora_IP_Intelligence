@@ -256,8 +256,19 @@ def totp_verify_setup():
 def totp_backup_codes_view():
     if not current_user.totp_enabled:
         return redirect(url_for('auth.profile'))
-    return render_template('security/totp_backup_codes.html',
-                           codes=current_user.totp_backup_codes)
+    return render_template('security/totp_backup_codes.html')
+
+
+@security_bp.route('/totp/new-backup-codes')
+@login_required
+def totp_new_codes_view():
+    """Show freshly generated backup codes exactly once via session."""
+    codes = session.pop('new_backup_codes', None)
+    if not codes:
+        # No codes in session — nothing to show
+        flash('No new backup codes to display.', 'info')
+        return redirect(url_for('security.totp_backup_codes_view'))
+    return render_template('security/totp_new_codes.html', codes=codes)
 
 
 @security_bp.route('/totp/regenerate-backup-codes', methods=['POST'])
@@ -272,10 +283,11 @@ def totp_regenerate_backup_codes():
         flash(err, 'error')
         return redirect(url_for('auth.profile'))
 
-    current_user.generate_backup_codes()
+    new_codes = current_user.generate_backup_codes()
     db.session.commit()
-    flash('Backup codes regenerated.', 'success')
-    return redirect(url_for('security.totp_backup_codes_view'))
+    # Store new codes in session for one-time display
+    session['new_backup_codes'] = new_codes
+    return redirect(url_for('security.totp_new_codes_view'))
 
 
 @security_bp.route('/totp/disable', methods=['POST'])
