@@ -60,7 +60,7 @@ def create_app():
     # Configuration
     # -----------------------------------------------------------------------
     app.config['SECRET_KEY']                  = os.environ.get('SECRET_KEY', 'change-me-in-production')
-    app.config['SQLALCHEMY_DATABASE_URI']     = os.environ.get('DATABASE_URL', 'sqlite:////ip_lookup.db')
+    app.config['SQLALCHEMY_DATABASE_URI']     = os.environ.get('DATABASE_URL', 'sqlite:///ip_lookup.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # ── Session & cookie security ─────────────────────────────────────────
@@ -130,11 +130,11 @@ def create_app():
     def add_security_headers(response):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' cdn.tailwindcss.com https://static.cloudflareinsights.com; "
+            "script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; "
             "font-src 'self' cdnjs.cloudflare.com; "
             "img-src 'self' data:; "
-            "connect-src 'self' https://cloudflareinsights.com;"
+            "connect-src 'self' wss:;"
         )
         response.headers['X-Content-Type-Options']  = 'nosniff'
         response.headers['X-Frame-Options']         = 'DENY'
