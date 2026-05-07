@@ -10,7 +10,13 @@ __ __
 
 # ChangeLog
 
-In this Update | 05/06/26
+In this Update | 05/07/26
+ - [x] Added a way to reset your password in case you forgot it.
+__ __
+
+<br>
+
+> Update | 05/06/26
  - [x] Upated tailwinds css to latest build as of this date for production environment.
  - [x] Deleting activities from your activity history now works again.
  - [x] Backup codes for 2fa/totp authentication are no longer displayed in the page where you go to refresh your codes. (after you have already enabled the feature and copied the codes)
