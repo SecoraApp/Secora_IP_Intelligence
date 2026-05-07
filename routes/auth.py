@@ -9,6 +9,7 @@ from flask import (Blueprint, current_app, flash, jsonify, redirect,
                    render_template, request, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 
+from sqlalchemy import or_
 from core.extensions import db, socketio
 from core.models import IPReport, SearchHistory, User
 from services import mail_check
@@ -43,7 +44,9 @@ def login():
 
     username_param = request.args.get('username')
     if username_param:
-        user = User.query.filter_by(username=username_param).first()
+        user = User.query.filter(
+            or_(User.username == username_param, User.email == username_param.lower())
+        ).first()
         if user and not user.email_confirmed:
             show_resend  = True
             pending_user = user
@@ -59,7 +62,10 @@ def login():
                                    show_resend=show_resend,
                                    pending_user=pending_user)
 
-        user = User.query.filter_by(username=username).first()
+        # Accept username or email
+        user = User.query.filter(
+            or_(User.username == username, User.email == username.lower())
+        ).first()
 
         if user:
             if not user.email_confirmed:
@@ -260,23 +266,33 @@ def confirm_email(token):
     return redirect(url_for('auth.login'))
 
 
-@auth_bp.route('/resend-confirmation', methods=['POST'])
+@auth_bp.route('/resend-confirmation', methods=['GET', 'POST'])
 def resend_confirmation():
-    email = request.form.get('email')
+    # GET — show a simple form to enter email and request resend
+    if request.method == 'GET':
+        return render_template('auth/resend_confirmation.html')
+
+    email = request.form.get('email', '').strip().lower()
     if not email:
-        flash('Invalid request.', 'error')
-        return redirect(url_for('auth.login'))
+        flash('Please enter your email address.', 'error')
+        return render_template('auth/resend_confirmation.html')
 
     user = User.query.filter_by(email=email).first()
 
+    # Don't reveal whether the email exists — same response either way
     if not user or user.email_confirmed:
-        flash('Your email is already confirmed.', 'info')
+        flash('If that email is registered and unconfirmed, a new link is on its way.', 'info')
         return redirect(url_for('auth.login'))
 
-    if _email_verifier().send_confirmation(user):
-        flash('Confirmation email resent. Check your spam folder if needed.', 'success')
-    else:
-        flash('Please wait before resending the confirmation email.', 'error')
+    try:
+        sent = _email_verifier().send_confirmation(user)
+        if sent:
+            flash('Confirmation email sent. Check your inbox and spam folder.', 'success')
+        else:
+            flash('Please wait a few minutes before requesting another confirmation email.', 'error')
+    except Exception as e:
+        current_app.logger.error(f'Resend confirmation failed for {email!r}: {e}')
+        flash('Could not send email right now. Please try again shortly.', 'error')
 
     return redirect(url_for('auth.login'))
 
