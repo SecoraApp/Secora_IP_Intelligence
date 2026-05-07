@@ -814,3 +814,109 @@ def microsoft_unlink():
         flash('Failed to unlink. Please try again.', 'error')
 
     return redirect(url_for('auth.profile'))
+
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """
+    Step 1 — collect the user's email and send a reset link.
+    Never reveals whether the email exists in the database.
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+
+        if email:
+            user = User.query.filter_by(email=email).first()
+            if user and user.email_confirmed:
+                try:
+                    _email_verifier().send_password_reset(user)
+                except Exception as e:
+                    current_app.logger.error(f'Password reset send failed for {email!r}: {e}')
+
+        # Always show the same message regardless of outcome
+        flash(
+            'If an account with that email exists, a reset link is on its way. '
+            'Check your inbox and spam folder. The link expires in 30 minutes.',
+            'info'
+        )
+        return redirect(url_for('auth.forgot_password'))
+
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def password_reset(token):
+    """
+    Step 2 — validate the token and set a new password.
+    If the user has 2FA enabled, also require a TOTP code.
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    # Validate token on every request
+    user_id = _email_verifier().confirm_reset_token(token)
+    if not user_id:
+        flash('This reset link is invalid or has expired. Please request a new one.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('Account not found.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        new_password         = request.form.get('new_password', '')
+        confirm_new_password = request.form.get('confirm_new_password', '')
+        totp_code            = request.form.get('totp_code', '').strip()
+
+        # Password complexity
+        pw_ok, pw_err = validate_password_complexity(new_password)
+        if not pw_ok:
+            flash(pw_err, 'error')
+            return render_template('auth/password_reset.html',
+                                   token=token, user=user)
+
+        if new_password != confirm_new_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('auth/password_reset.html',
+                                   token=token, user=user)
+
+        # If 2FA is enabled, verify TOTP before applying the reset
+        if user.totp_enabled:
+            if not totp_code:
+                flash('Please enter your authenticator code to confirm.', 'error')
+                return render_template('auth/password_reset.html',
+                                       token=token, user=user)
+            import pyotp
+            if not pyotp.TOTP(user.totp_secret).verify(totp_code, valid_window=1):
+                flash('Invalid or expired authenticator code.', 'error')
+                return render_template('auth/password_reset.html',
+                                       token=token, user=user)
+
+        try:
+            user.set_password(new_password)
+            user.record_password_change()
+            db.session.commit()
+
+            # Notify the user their password changed
+            try:
+                _email_verifier().send_password_changed_alert(user)
+            except Exception as e:
+                current_app.logger.error(f'Password change alert failed: {e}')
+
+            flash('Password reset successfully. You can now sign in.', 'success')
+            return redirect(url_for('auth.login'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Password reset DB error: {e}')
+            flash('Failed to reset password. Please try again.', 'error')
+
+    return render_template('auth/password_reset.html', token=token, user=user)
