@@ -159,7 +159,7 @@ If you did not create this account, you can safely ignore this email.
         msg.body = f"""\
 Hello {user.username},
 
-We received a request to change your Secora email address.
+We received a request to change your Secora email address to this one.
 Click the link below to confirm:
 
 {confirm_url}
@@ -170,3 +170,101 @@ your original address will remain unchanged.
 """
         self._send(msg)
         return True
+
+    # -----------------------------------------------------------------------
+    # Password reset
+    # -----------------------------------------------------------------------
+
+    # Rate limit: max 3 reset requests per hour per email
+    RESET_COOLDOWN   = 1800   # 30 min between requests per email
+    RESET_EXPIRATION = 300   # token valid for 5 minutes
+
+    def generate_reset_token(self, user_id):
+        """Sign a password reset token containing the user ID."""
+        return self._serializer().dumps(
+            {'user_id': user_id, 'purpose': 'password-reset'},
+            salt='password-reset-salt',
+        )
+
+    def confirm_reset_token(self, token):
+        """
+        Validate a reset token.
+        Returns user_id on success, None if invalid or expired.
+        """
+        try:
+            data = self._serializer().loads(
+                token,
+                salt='password-reset-salt',
+                max_age=self.RESET_EXPIRATION,
+            )
+            if data.get('purpose') != 'password-reset':
+                return None
+            return data['user_id']
+        except (BadSignature, SignatureExpired, KeyError):
+            return None
+
+    def can_send_reset(self, email):
+        """Return True if a reset email is allowed. Fails open if Redis is down."""
+        try:
+            r   = get_redis()
+            key = f'pw_reset:{email}'
+            if r.exists(key):
+                return False
+            r.setex(key, self.RESET_COOLDOWN, '1')
+            return True
+        except Exception as e:
+            current_app.logger.warning(f'Redis unavailable for reset rate limit: {e}')
+            return True
+
+    def send_password_reset(self, user):
+        """
+        Send a password reset link to *user*.
+        Returns True if sent, False if rate-limited.
+        """
+        if not self.can_send_reset(user.email):
+            return False
+
+        token      = self.generate_reset_token(user.id)
+        reset_url  = url_for('auth.password_reset', token=token, _external=True)
+
+        msg = Message(
+            subject='Reset your Secora password',
+            recipients=[user.email],
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
+        )
+        msg.body = f"""\
+Hello {user.username},
+
+We received a request to reset the password for your Secora account.
+Click the link below to set a new password:
+
+{reset_url}
+
+This link will expire in 5 minutes.
+If you did not request a password reset, you can safely ignore this email.
+Your password will not be changed unless you click the link above.
+"""
+        self._send(msg)
+        return True
+
+    def send_password_changed_alert(self, user):
+        """Notify the user that their password was successfully changed."""
+        msg = Message(
+            subject='Your Secora password has been changed',
+            recipients=[user.email],
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
+        )
+        msg.body = f"""\
+Hello {user.username},
+
+Your Secora password was just changed successfully.
+
+If you made this change, no action is needed.
+
+If you did NOT change your password, your account may be compromised.
+Please contact us immediately.
+"""
+        try:
+            self._send(msg)
+        except Exception as e:
+            current_app.logger.error(f'Password change alert failed for {user.email}: {e}')
