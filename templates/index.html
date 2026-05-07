@@ -584,18 +584,18 @@
                 commentsHtml = "<div class='text-gray-500 text-xs'>No recent comments available.</div>";
             }
             abuseipdbHtml +=
-                '<div class="mt-3 pt-3 border-t border-gray-600">' +
-                    '<div class="flex flex-wrap items-center gap-2 mb-3">' +
+                '<div class="flex justify-between items-center mb-4">' +
+                    '<div class="flex items-center gap-2">' +
                         '<img src="https://www.abuseipdb.com/favicon.ico" class="w-5 h-5 flex-shrink-0" alt="AbuseIPDB">' +
-                        '<span class="text-red-300 font-bold">AbuseIPDB Reports</span>' +
-                        '<span class="text-xs bg-red-600 px-2 py-1 rounded text-white whitespace-nowrap">' + sanitizedData.abuseipdb_total_reports + ' reports</span>' +
-                        (sanitizedData.abuseipdb_confidence_score !== undefined ? '<span class="text-xs bg-orange-600 px-2 py-1 rounded text-white whitespace-nowrap">Confidence: ' + sanitizedData.abuseipdb_confidence_score + '%</span>' : '') +
+                        '<span class="text-white font-medium">AbuseIPDB Reports</span>' +
                     '</div>' +
-                    '<div class="space-y-2">' +
-                        '<div class="text-xs text-gray-400 mb-1">Recent Comments:</div>' +
-                        commentsHtml +
+                    '<div class="flex items-center gap-2">' +
+                        '<span class="text-xs bg-red-600 px-2 py-1 rounded text-white">' + sanitizedData.abuseipdb_total_reports + ' reports</span>' +
+                        (sanitizedData.abuseipdb_confidence_score !== undefined ? '<span class="text-xs bg-orange-600 px-2 py-1 rounded text-white">Confidence: ' + sanitizedData.abuseipdb_confidence_score + '%</span>' : '') +
                     '</div>' +
-                '</div>';
+                '</div>' +
+                '<div class="text-xs text-gray-400 mb-2">Recent Comments:</div>' +
+                '<div class="space-y-2">' + commentsHtml + '</div>';
         }
 
         const securityCard = `
@@ -698,7 +698,7 @@
             const abuseipdbRow = document.createElement('div');
             abuseipdbRow.id = 'abuseipdbCardRow';
             abuseipdbRow.className = 'w-full flex justify-center mt-6';
-            abuseipdbRow.innerHTML = `<div class=\"intel-card p-4 rounded-lg border border-dark-border bg-dark-card max-w-3xl w-full\">${abuseipdbHtml.replace('space-y-2', 'space-y-1')}</div>`;
+            abuseipdbRow.innerHTML = `<div class="intel-card p-6 rounded-lg border border-dark-border bg-dark-card max-w-3xl w-full hover:border-red-400 transition-all duration-300">${abuseipdbHtml}</div>`;
             // Insert after resultsGrid
             const resultsGridElem = document.getElementById('resultsGrid');
             if (resultsGridElem && resultsGridElem.parentNode) {
