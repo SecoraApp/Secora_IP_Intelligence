@@ -133,7 +133,7 @@ def create_app():
             "script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; "
             "font-src 'self' cdnjs.cloudflare.com; "
-            "img-src 'self' data:; "
+            "img-src 'self' data: https://www.abuseipdb.com; "
             "connect-src 'self' wss:;"
         )
         response.headers['X-Content-Type-Options']  = 'nosniff'
