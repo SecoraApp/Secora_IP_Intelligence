@@ -39,6 +39,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <style>
+        /* Ensure pointer cursor on all interactive elements */
+        a, button, [role="button"], summary, label[for] { cursor: pointer; }
+    </style>
+    <style>
         /* Custom styles to match the original design */
         .sidebar-nav .nav-item.active {
             background: linear-gradient(135deg, #3b82f6, #1d4ed8);
