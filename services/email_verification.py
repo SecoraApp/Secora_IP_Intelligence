@@ -177,7 +177,7 @@ your original address will remain unchanged.
 
     # Rate limit: max 3 reset requests per hour per email
     RESET_COOLDOWN   = 1800   # 30 min between requests per email
-    RESET_EXPIRATION = 300   # token valid for 5 minutes
+    RESET_EXPIRATION = 300    # token valid for 5 minutes
 
     def generate_reset_token(self, user_id):
         """Sign a password reset token containing the user ID."""
@@ -204,25 +204,31 @@ your original address will remain unchanged.
             return None
 
     def can_send_reset(self, email):
-        """Return True if a reset email is allowed. Fails open if Redis is down."""
+        """
+        Return (allowed: bool, seconds_remaining: int).
+        Fails open if Redis is down.
+        """
         try:
             r   = get_redis()
             key = f'pw_reset:{email}'
-            if r.exists(key):
-                return False
+            ttl = r.ttl(key)
+            if ttl > 0:
+                return False, ttl
             r.setex(key, self.RESET_COOLDOWN, '1')
-            return True
+            return True, 0
         except Exception as e:
             current_app.logger.warning(f'Redis unavailable for reset rate limit: {e}')
-            return True
+            return True, 0
 
     def send_password_reset(self, user):
         """
         Send a password reset link to *user*.
-        Returns True if sent, False if rate-limited.
+        Returns (sent: bool, seconds_remaining: int).
+        seconds_remaining is 0 when sent, >0 when rate-limited.
         """
-        if not self.can_send_reset(user.email):
-            return False
+        allowed, ttl = self.can_send_reset(user.email)
+        if not allowed:
+            return False, ttl
 
         token      = self.generate_reset_token(user.id)
         reset_url  = url_for('auth.password_reset', token=token, _external=True)
@@ -245,7 +251,7 @@ If you did not request a password reset, you can safely ignore this email.
 Your password will not be changed unless you click the link above.
 """
         self._send(msg)
-        return True
+        return True, 0
 
     def send_password_changed_alert(self, user):
         """Notify the user that their password was successfully changed."""
