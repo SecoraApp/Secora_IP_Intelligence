@@ -833,20 +833,30 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
 
+        on_cooldown = False
         if email:
             user = User.query.filter_by(email=email).first()
             if user and user.email_confirmed:
                 try:
-                    _email_verifier().send_password_reset(user)
+                    sent = _email_verifier().send_password_reset(user)
+                    if not sent:
+                        on_cooldown = True
                 except Exception as e:
                     current_app.logger.error(f'Password reset send failed for {email!r}: {e}')
 
-        # Always show the same message regardless of outcome
-        flash(
-            'If an account with that email exists, a reset link is on its way. '
-            'Check your inbox and spam folder. The link expires in 30 minutes.',
-            'info'
-        )
+        if on_cooldown:
+            flash(
+                'A reset link was already sent recently. '
+                'Please wait 30 minutes before requesting another, '
+                'or check your inbox and spam folder for the existing link.',
+                'error'
+            )
+        else:
+            flash(
+                'If an account with that email exists, a reset link is on its way. '
+                'Check your inbox and spam folder. The link expires in 5 minutes.',
+                'info'
+            )
         return redirect(url_for('auth.forgot_password'))
 
     return render_template('auth/forgot_password.html')
@@ -864,7 +874,7 @@ def password_reset(token):
     # Validate token on every request
     user_id = _email_verifier().confirm_reset_token(token)
     if not user_id:
-        flash('This reset link is invalid or has expired. Please request a new one.', 'error')
+        flash('This reset link is invalid or has expired (links expire after 5 minutes). Please request a new one.', 'error')
         return redirect(url_for('auth.forgot_password'))
 
     user = db.session.get(User, user_id)
