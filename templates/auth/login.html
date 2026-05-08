@@ -55,11 +55,11 @@
                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                 <label for="remember" class="ml-2 block text-sm text-gray-300">Remember me</label>
                 </div>
-                <a href="{{ url_for('auth.forgot_password') }}" class="text-sm text-gray-400 hover:text-blue-400 transition-colors">Forgot password?</a>
+                <a href="{{ url_for('auth.forgot_password') }}" class="cursor-pointer text-sm text-blue-400 hover:text-blue-300 transition-colors">Forgot password?</a>
             </div>
 
             <button type="submit"
-                    class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center">
+                    class="cursor-pointer w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 flex items-center justify-center">
                 <i class="fas fa-sign-in-alt mr-2"></i>
                 Sign In
             </button>
@@ -73,7 +73,7 @@
             </div>
             <button id="passkey-login-btn"
                     onclick="loginWithPasskey()"
-                    class="w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-medium rounded-lg flex items-center justify-center space-x-2 transition-colors">
+                    class="cursor-pointer w-full py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 font-medium rounded-lg flex items-center justify-center space-x-2 transition-colors">
                 <i class="fas fa-key text-sm"></i>
                 <span id="passkey-btn-label">Sign in with a passkey</span>
             </button>
@@ -84,7 +84,7 @@
         <form method="POST" action="{{ url_for('auth.resend_confirmation') }}" class="mt-4 text-center">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="email" value="{{ pending_user.email }}">
-            <button type="submit" class="text-sm text-blue-400 hover:text-blue-300 underline">
+            <button type="submit" class="cursor-pointer text-sm text-blue-400 hover:text-blue-300 underline">
                 Resend confirmation email
             </button>
         </form>
@@ -93,7 +93,7 @@
         <div class="mt-6 text-center">
             <p class="text-gray-400">
                 Don't have an account?
-                <a href="{{ url_for('auth.register') }}" class="text-blue-400 hover:text-blue-300">Sign up here</a>
+                <a href="{{ url_for('auth.register') }}" class="cursor-pointer text-blue-400 hover:text-blue-300">Sign up here</a>
             </p>
         </div>
     </div>
