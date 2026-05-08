@@ -25,3 +25,13 @@
  */
 @source "../../templates";
 @source "../../static/js";
+
+/*
+ * Safelist — classes used in JS template literals or not auto-detected.
+ * Adding them as comments forces Tailwind to include them in the output.
+ */
+/*
+ b g*-emerald-500 bg-emerald-600 bg-emerald-500/20 border-emerald-500/20
+ hover:bg-emerald-500 hover:bg-emerald-600 hover:bg-blue-700
+ text-amber-300 border-amber-500 focus:ring-amber-500
+ */
