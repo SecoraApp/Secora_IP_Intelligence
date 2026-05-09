@@ -847,8 +847,7 @@ def forgot_password():
         if on_cooldown:
             flash(
                 'A reset link was already sent to that address recently. '
-                'Please wait before requesting another — '
-                'check your inbox and spam folder for the existing link (valid for 5 minutes).',
+                'Please wait before requesting another. ',
                 'error'
             )
         else:
