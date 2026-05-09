@@ -835,18 +835,14 @@ def forgot_password():
 
         on_cooldown = False
         if email:
-            # Check rate limit first — do this before querying the user so
-            # we don't accidentally leak whether an account exists via timing
-            rate_ok = _email_verifier().can_send_reset(email)
-            if not rate_ok:
-                on_cooldown = True
-            else:
-                user = User.query.filter_by(email=email).first()
-                if user and user.email_confirmed:
-                    try:
-                        _email_verifier().send_password_reset(user)
-                    except Exception as e:
-                        current_app.logger.error(f'Password reset send failed for {email!r}: {e}')
+            user = User.query.filter_by(email=email).first()
+            if user and user.email_confirmed:
+                try:
+                    sent, ttl = _email_verifier().send_password_reset(user)
+                    if not sent:
+                        on_cooldown = True
+                except Exception as e:
+                    current_app.logger.error(f'Password reset send failed for {email!r}: {e}')
 
         if on_cooldown:
             flash(
