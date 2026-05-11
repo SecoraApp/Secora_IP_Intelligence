@@ -15,7 +15,6 @@ def is_valid_ip(ip):
     """Validate an IPv4 address and reject private/reserved ranges."""
     if not ip or not isinstance(ip, str):
         return False
-
     if len(ip) > 15 or len(ip) < 7:
         return False
 
@@ -35,13 +34,12 @@ def is_valid_ip(ip):
     except ValueError:
         return False
 
-    # Block private/reserved ranges
     if (octets[0] == 10
             or (octets[0] == 172 and 16 <= octets[1] <= 31)
             or (octets[0] == 192 and octets[1] == 168)
-            or octets[0] == 127   # localhost
-            or octets[0] == 0     # invalid
-            or octets[0] >= 224): # multicast/reserved
+            or octets[0] == 127
+            or octets[0] == 0
+            or octets[0] >= 224):
         return False
 
     return True
@@ -73,26 +71,82 @@ def sanitize_string(value, max_length=500):
     return sanitized
 
 
+def validate_username(username):
+    """
+    Validate a username string.
+    Returns (ok: bool, error: str | None).
+    Rules: 3–80 chars, letters/numbers/underscore/hyphen only.
+    """
+    if not username or not isinstance(username, str):
+        return False, 'Username is required.'
+    if len(username) < 3:
+        return False, 'Username must be at least 3 characters.'
+    if len(username) > 80:
+        return False, 'Username must be 80 characters or fewer.'
+    if not re.match(r'^[a-zA-Z0-9_\-]+$', username):
+        return False, 'Username may only contain letters, numbers, underscores, and hyphens.'
+    return True, None
+
+
+def validate_email(email):
+    """
+    Basic email format validation and length cap.
+    Returns (ok: bool, error: str | None).
+    Full deliverability is checked by mail_check() in services.
+    """
+    if not email or not isinstance(email, str):
+        return False, 'Email address is required.'
+    if len(email) > 254:
+        return False, 'Email address is too long.'
+    if '@' not in email or '.' not in email.split('@')[-1]:
+        return False, 'Please enter a valid email address.'
+    return True, None
+
+
 # ---------------------------------------------------------------------------
 # Password complexity
 # ---------------------------------------------------------------------------
 
-import re as _re
-
-
-def validate_password_complexity(password: str) -> tuple[bool, str | None]:
+def validate_password_complexity(password):
     """
     Enforce the same rules shown in the frontend strength bar.
-    Returns (ok, error_message).
+    Returns (ok: bool, error: str | None).
     """
+    if not password or not isinstance(password, str):
+        return False, 'Password is required.'
     if len(password) < 15:
         return False, 'Password must be at least 15 characters long.'
-    if not _re.search(r'[A-Z]', password):
+    if len(password) > 1024:
+        return False, 'Password is too long.'
+    if not re.search(r'[A-Z]', password):
         return False, 'Password must contain at least one uppercase letter.'
-    if not _re.search(r'[a-z]', password):
+    if not re.search(r'[a-z]', password):
         return False, 'Password must contain at least one lowercase letter.'
-    if not _re.search(r'[0-9]', password):
+    if not re.search(r'[0-9]', password):
         return False, 'Password must contain at least one number.'
-    if not _re.search(r'[^A-Za-z0-9]', password):
+    if not re.search(r'[^A-Za-z0-9]', password):
         return False, 'Password must contain at least one special character.'
+    return True, None
+
+
+# ---------------------------------------------------------------------------
+# Allowlists for enum-type fields
+# ---------------------------------------------------------------------------
+
+ALLOWED_REPORT_TYPES = {
+    'spam',
+    'malicious',
+    'brute_force',
+    'scanning',
+    'phishing',
+    'ddos',
+    'botnet',
+    'other',
+}
+
+
+def validate_report_type(value):
+    """Return (ok, error) — ensures report_type is one of the allowed values."""
+    if value not in ALLOWED_REPORT_TYPES:
+        return False, f'Invalid report type. Must be one of: {", ".join(sorted(ALLOWED_REPORT_TYPES))}'
     return True, None
