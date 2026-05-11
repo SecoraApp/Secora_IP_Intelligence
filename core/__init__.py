@@ -7,7 +7,9 @@ core/__init__.py — Re-exports extensions, models, utils, and crypto.
 
 from core.extensions import db, login_manager, socketio, mail, init_extensions
 from core.models import User, SearchHistory, IPReport, PasskeyCredential
-from core.utils import is_valid_ip, is_valid_url, sanitize_string, validate_password_complexity
+from core.utils import (is_valid_ip, is_valid_url, sanitize_string,
+                        validate_password_complexity, validate_username,
+                        validate_email, validate_report_type, ALLOWED_REPORT_TYPES)
 from core.crypto import encrypt, decrypt
 
 __all__ = [
@@ -17,6 +19,7 @@ __all__ = [
     'User', 'SearchHistory', 'IPReport', 'PasskeyCredential',
     # utils
     'is_valid_ip', 'is_valid_url', 'sanitize_string', 'validate_password_complexity',
+    'validate_username', 'validate_email', 'validate_report_type', 'ALLOWED_REPORT_TYPES',
     # crypto
     'encrypt', 'decrypt',
 ]
