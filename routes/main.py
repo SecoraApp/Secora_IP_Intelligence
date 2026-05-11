@@ -19,7 +19,8 @@ from flask_socketio import emit, join_room
 from core.extensions import db, socketio
 from core.models import IPReport, SearchHistory
 from services import lookup_ip, shorten_with_multiple_services
-from core.utils import is_valid_ip, is_valid_url, sanitize_string
+from core.utils import (is_valid_ip, is_valid_url, sanitize_string,
+                        validate_report_type, ALLOWED_REPORT_TYPES)
 
 main_bp = Blueprint('main', __name__)
 
@@ -129,6 +130,7 @@ def get_my_ip():
 
 
 @main_bp.route('/lookup', methods=['POST'])
+@login_required
 @rate_limit(max_requests=20, window_seconds=60)
 def lookup():
     """Perform an IP intelligence lookup."""
@@ -211,16 +213,19 @@ def report_ip():
 
         if not ip_address or not is_valid_ip(ip_address):
             return jsonify({'error': 'Please enter a valid public IP address'}), 400
-        if not report_type:
-            return jsonify({'error': 'Please select a report type'}), 400
+        rt_ok, rt_err = validate_report_type(report_type)
+        if not rt_ok:
+            return jsonify({'error': rt_err}), 400
         if not comment:
             return jsonify({'error': 'Please provide a comment'}), 400
+        if len(comment) > 1000:
+            return jsonify({'error': 'Comment must be 1000 characters or fewer'}), 400
 
-        yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
+        window_start = datetime.now(timezone.utc) - timedelta(hours=24)
         if IPReport.query.filter_by(
             user_id=current_user.id, ip_address=ip_address
-        ).filter(IPReport.timestamp > yesterday).first():
-            return jsonify({'error': 'You have already reported this IP address recently'}), 400
+        ).filter(IPReport.timestamp > window_start).first():
+            return jsonify({'error': 'You have already reported this IP address in the last 24 hours'}), 400
 
         db.session.add(IPReport(
             user_id=current_user.id,
@@ -238,6 +243,7 @@ def report_ip():
 
 
 @main_bp.route('/get-ip-reports/<ip_address>', methods=['GET'])
+@rate_limit(max_requests=30, window_seconds=60)
 def get_ip_reports(ip_address):
     """Return recent community reports for *ip_address*."""
     try:
@@ -269,6 +275,7 @@ def get_ip_reports(ip_address):
 
 
 @main_bp.route('/shorten', methods=['POST'])
+@login_required
 @rate_limit(max_requests=10, window_seconds=60)
 def shorten_url():
     """Shorten a URL using multiple external services."""
@@ -323,10 +330,9 @@ def lookup_count():
             db.func.date(SearchHistory.timestamp) == today,
         ).count()
         return jsonify({
-            'success':      True,
+            'success':       True,
             'lookups_today': lookups_today,
-            'user_id':      current_user.id,
-            'date':         str(today),
+            'date':          str(today),
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
