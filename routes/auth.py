@@ -14,7 +14,8 @@ from core.extensions import db, socketio
 from core.models import IPReport, SearchHistory, User
 from services import mail_check
 from services.email_verification import EmailVerification
-from core.utils import is_valid_ip, sanitize_string, validate_password_complexity
+from core.utils import (is_valid_ip, sanitize_string, validate_password_complexity,
+                        validate_username, validate_email)
 
 # Imported lazily inside routes to avoid circular imports at module load:
 # from routes.security import _verify_auth
@@ -156,6 +157,9 @@ def login_totp():
 
         session.pop('pending_2fa_user', None)
         session.pop('pending_2fa_remember', None)
+        # Regenerate session to prevent session fixation attacks
+        from flask import current_app
+        session.clear()
         login_user(user, remember=remember)
         flash(f'Welcome back, {user.username}!', 'success')
         return redirect(url_for('main.index'))
@@ -314,7 +318,7 @@ def profile():
 @auth_bp.route('/history')
 @login_required
 def history():
-    page    = request.args.get('page', 1, type=int)
+    page    = max(1, min(request.args.get('page', 1, type=int), 1000))
     per_page = 20
     searches = (SearchHistory.query
                 .filter_by(user_id=current_user.id)
@@ -330,8 +334,10 @@ def delete_history(history_id):
         entry = SearchHistory.query.filter_by(
             id=history_id, user_id=current_user.id
         ).first()
+        # Return same response whether entry doesn't exist or belongs to
+        # another user — prevents confirming other users' history IDs
         if not entry:
-            return jsonify({'error': 'History entry not found'}), 404
+            return jsonify({'success': True, 'message': 'History entry deleted'})
         db.session.delete(entry)
         db.session.commit()
         return jsonify({'success': True, 'message': 'History entry deleted'})
@@ -344,7 +350,7 @@ def delete_history(history_id):
 @login_required
 def load_more_history():
     try:
-        page     = request.args.get('page', 1, type=int)
+        page     = max(1, min(request.args.get('page', 1, type=int), 1000))
         per_page = 20
         searches = (SearchHistory.query
                     .filter_by(user_id=current_user.id)
@@ -407,12 +413,9 @@ def _get_verify_auth():
 def update_username():
     new_username = request.form.get('new_username', '').strip()
 
-    if not new_username:
-        flash('Please enter a new username.', 'error')
-        return redirect(url_for('auth.profile'))
-
-    if len(new_username) < 3:
-        flash('Username must be at least 3 characters.', 'error')
+    un_ok, un_err = validate_username(new_username)
+    if not un_ok:
+        flash(un_err, 'error')
         return redirect(url_for('auth.profile'))
 
     # Rate limit: max 2 changes per 30 days
@@ -445,11 +448,16 @@ def update_username():
 @auth_bp.route('/settings/email', methods=['POST'])
 @login_required
 def update_email():
-    new_email        = request.form.get('new_email', '').strip()
+    new_email        = request.form.get('new_email', '').strip().lower()
     confirm_password = request.form.get('confirm_password', '')
 
     if not new_email or not confirm_password:
         flash('All fields are required.', 'error')
+        return redirect(url_for('auth.profile'))
+
+    em_ok, em_err = validate_email(new_email)
+    if not em_ok:
+        flash(em_err, 'error')
         return redirect(url_for('auth.profile'))
 
     # Rate limit: max 2 email changes per 24 hours
@@ -834,7 +842,7 @@ def forgot_password():
         email = request.form.get('email', '').strip().lower()
 
         on_cooldown = False
-        if email:
+        if email and len(email) <= 254:
             user = User.query.filter_by(email=email).first()
             if user and user.email_confirmed:
                 try:
@@ -847,7 +855,8 @@ def forgot_password():
         if on_cooldown:
             flash(
                 'A reset link was already sent to that address recently. '
-                'Please wait before requesting another. ',
+                'Please wait before requesting another — '
+                'check your inbox and spam folder for the existing link (valid for 5 minutes).',
                 'error'
             )
         else:
