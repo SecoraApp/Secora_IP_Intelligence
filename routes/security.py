@@ -262,12 +262,27 @@ def totp_backup_codes_view():
 @security_bp.route('/totp/new-backup-codes')
 @login_required
 def totp_new_codes_view():
-    """Show freshly generated backup codes exactly once via session."""
-    codes = session.pop('new_backup_codes', None)
+    """Show freshly generated backup codes exactly once."""
+    codes = None
+    # Try Redis first (preferred — codes never leave the server)
+    try:
+        import redis as _redis, json as _json
+        r = _redis.Redis(host='localhost', port=6379, db=0,
+                         socket_connect_timeout=2, decode_responses=True)
+        raw = r.getdel(f'new_backup_codes:{current_user.id}')
+        if raw:
+            codes = _json.loads(raw)
+    except Exception:
+        pass
+
+    # Fall back to session if Redis was unavailable during storage
     if not codes:
-        # No codes in session — nothing to show
-        flash('No new backup codes to display.', 'info')
+        codes = session.pop('new_backup_codes', None)
+
+    if not codes:
+        flash('No new backup codes to display. They may have expired — regenerate below.', 'info')
         return redirect(url_for('security.totp_backup_codes_view'))
+
     return render_template('security/totp_new_codes.html', codes=codes)
 
 
@@ -285,8 +300,16 @@ def totp_regenerate_backup_codes():
 
     new_codes = current_user.generate_backup_codes()
     db.session.commit()
-    # Store new codes in session for one-time display
-    session['new_backup_codes'] = new_codes
+    # Store new codes server-side with a short TTL — not in the cookie.
+    # Key is scoped to this user so another user can't access it.
+    try:
+        import redis as _redis, json as _json
+        r = _redis.Redis(host='localhost', port=6379, db=0,
+                         socket_connect_timeout=2, decode_responses=True)
+        r.setex(f'new_backup_codes:{current_user.id}', 120, _json.dumps(new_codes))
+    except Exception:
+        # Redis down — fall back to session (less ideal but functional)
+        session['new_backup_codes'] = new_codes
     return redirect(url_for('security.totp_new_codes_view'))
 
 
@@ -465,7 +488,9 @@ def passkey_authenticate_complete():
             credential_id=cred_id_bytes
         ).first()
         if not db_cred:
-            return jsonify({'ok': False, 'error': 'Unknown credential'}), 400
+            # Use same error message as verification failure to prevent
+            # timing-based enumeration of valid credential IDs
+            return jsonify({'ok': False, 'error': 'Authentication failed'}), 400
 
         verification = verify_authentication_response(
             credential=credential,
